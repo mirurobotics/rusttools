@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
 
-export CRATE_DIR="$REPO_ROOT/tools/lint"
-
-exec "$REPO_ROOT/scripts/lib/dep-updates.sh"
+cargo update --verbose
+echo ""
