@@ -8,8 +8,7 @@ use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
 use crate::parser::parse;
-use crate::rules::fieldassert::detect::{check_file as check_asserts, Violation};
-use crate::rules::funclen;
+use crate::rules::{fieldassert, funclen};
 
 // external crates
 use clap::Parser as ClapParser;
@@ -105,8 +104,12 @@ fn run_from_dir(
     0
 }
 
-fn run_assert_check(base_dir: &Path, cli: &Cli, stdout: &mut impl Write) -> Vec<Violation> {
-    let mut all_violations: Vec<Violation> = Vec::new();
+fn run_assert_check(
+    base_dir: &Path,
+    cli: &Cli,
+    stdout: &mut impl Write,
+) -> Vec<fieldassert::detect::Violation> {
+    let mut all_violations: Vec<fieldassert::detect::Violation> = Vec::new();
 
     for dir in &cli.assert_paths {
         let resolved = resolve_input_path(base_dir, dir);
@@ -119,7 +122,11 @@ fn run_assert_check(base_dir: &Path, cli: &Cli, stdout: &mut impl Write) -> Vec<
                 Ok(s) => s,
                 Err(_) => continue,
             };
-            all_violations.extend(check_asserts(path, &source, cli.assert_threshold));
+            all_violations.extend(fieldassert::detect::check_file(
+                path,
+                &source,
+                cli.assert_threshold,
+            ));
         }
     }
 
