@@ -245,7 +245,9 @@ fn test_example() {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 4);
         assert_eq!(violations.len(), 1);
-        assert!(violations[0].message.starts_with("4 assert_eq! calls on fields of `req`"));
+        assert!(violations[0]
+            .message
+            .starts_with("4 assert_eq! calls on fields of `req`"));
     }
 
     #[test]

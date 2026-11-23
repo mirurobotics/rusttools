@@ -111,12 +111,7 @@ fn run_from_dir(
     0
 }
 
-fn run_rules(
-    files: &[PathBuf],
-    rules: &[Rule],
-    limits: &Limits,
-    stdout: &mut impl Write,
-) -> usize {
+fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut impl Write) -> usize {
     let diagnostics = check_rules(files, rules, limits);
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     for diagnostic in &diagnostics {

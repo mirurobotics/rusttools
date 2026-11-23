@@ -219,7 +219,10 @@ mod tests {
         let violations = check(&src_fn(4), 3);
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].line, 1);
-        assert_eq!(violations[0].message, "function `sample` is 4 lines (limit 3)");
+        assert_eq!(
+            violations[0].message,
+            "function `sample` is 4 lines (limit 3)"
+        );
     }
 
     #[test]
