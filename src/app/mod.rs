@@ -95,7 +95,7 @@ fn run_from_dir(
 
     if cli.fix {
         let _ = writeln!(stdout, "\n{} file(s) fixed.", totals.files_fixed);
-        // funclen has no auto-fix; violations still fail the run.
+        // rules have no auto-fix; their diagnostics still fail the run.
         if rule_diagnostics > 0 {
             return 1;
         }

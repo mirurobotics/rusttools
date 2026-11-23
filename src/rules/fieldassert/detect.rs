@@ -52,7 +52,6 @@ fn is_test_fn(f: &syn::ItemFn) -> bool {
 }
 
 fn check_test_fn(item_fn: &syn::ItemFn, input: &Input, diagnostics: &mut Vec<Diagnostic>) {
-    // Check for escape hatch in the raw source lines within the function span.
     // Use span to find the line range of the function in the source.
     let open_span = item_fn.block.brace_token.span.open();
     let close_span = item_fn.block.brace_token.span.close();
@@ -245,9 +244,11 @@ fn test_example() {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 4);
         assert_eq!(violations.len(), 1);
-        assert!(violations[0]
-            .message
-            .starts_with("4 assert_eq! calls on fields of `req`"));
+        assert_eq!(
+            violations[0].message,
+            "4 assert_eq! calls on fields of `req` \u{2014} \
+             consider constructing an expected struct"
+        );
     }
 
     #[test]
