@@ -246,14 +246,9 @@ fn process_file(
         return;
     }
 
+    let (classifier, config) = (&imports.classifier, &imports.config);
     if imports.fix {
-        let fixed = fix_file(
-            file_path,
-            &content,
-            &block,
-            &imports.classifier,
-            &imports.config,
-        );
+        let fixed = fix_file(file_path, &content, &block, classifier, config);
         if fixed == content {
             return;
         }
@@ -272,7 +267,7 @@ fn process_file(
         return;
     }
 
-    let diagnostics = check(file_path, &block, &imports.classifier, &imports.config);
+    let diagnostics = check(file_path, &block, classifier, config);
     if diagnostics.is_empty() {
         return;
     }
