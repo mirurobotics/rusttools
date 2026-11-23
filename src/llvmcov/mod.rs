@@ -75,7 +75,8 @@ fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
 
 fn run_llvm_cov(root: &Path) -> Result<Vec<FileCoverage>, String> {
     let output = Command::new("cargo")
-        .args(["llvm-cov", "--json"])
+        .args(["llvm-cov", "--json", "--manifest-path"])
+        .arg(root.join("Cargo.toml"))
         .current_dir(root)
         .stderr(Stdio::inherit())
         .output()
