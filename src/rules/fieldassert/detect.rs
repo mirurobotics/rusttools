@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 // internal crates
-use crate::asserts::extract::root_receiver;
+use crate::rules::fieldassert::extract::root_receiver;
 
 // external crates
 use proc_macro2::{TokenStream, TokenTree};

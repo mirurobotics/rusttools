@@ -3,13 +3,13 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // internal crates
-use crate::asserts::detect::{check_file as check_asserts, Violation};
 use crate::checker::check;
 use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
-use crate::funclen;
 use crate::parser::parse;
+use crate::rules::fieldassert::detect::{check_file as check_asserts, Violation};
+use crate::rules::funclen;
 
 // external crates
 use clap::Parser as ClapParser;
