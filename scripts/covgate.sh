@@ -51,7 +51,7 @@ HAS_FAILURES=0
 # Discover modules: every directory under SRC_DIR that contains a .covgate file
 covgate_list=$(mktemp)
 trap 'rm -f "$covgate_list"' EXIT
-find "$SRC_DIR" -name '.covgate' -type f | sort > "$covgate_list"
+find "$SRC_DIR" -name '.covgate' -type f | sort >"$covgate_list"
 
 while read -r covgate_file; do
     module_path=$(dirname "$covgate_file")
@@ -92,7 +92,7 @@ while read -r covgate_file; do
     else
         echo "✅ ${module_display}: ${coverage}% (requires ${MIN}%)"
     fi
-done < "$covgate_list"
+done <"$covgate_list"
 
 echo ""
 
