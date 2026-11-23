@@ -120,7 +120,6 @@ struct LiteralFinder {
     literals: Vec<(usize, usize)>,
     code_starts: Vec<usize>,
     has_block: bool,
-    has_macro_args: bool,
 }
 
 impl<'ast> Visit<'ast> for LiteralFinder {
@@ -130,9 +129,8 @@ impl<'ast> Visit<'ast> for LiteralFinder {
         let span = node.span();
         self.code_starts.push(span.start().line);
         let start_mark = self.code_starts.len();
-        self.has_macro_args = false;
         syn::visit::visit_expr(self, node);
-        if is_composite_literal(node, self.has_macro_args) && !self.has_block {
+        if is_composite_literal(node) && !self.has_block {
             self.literals.truncate(literal_mark);
             self.code_starts.truncate(start_mark);
             self.literals.push((span.start().line, span.end().line));
@@ -157,11 +155,9 @@ impl<'ast> Visit<'ast> for LiteralFinder {
 
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
         syn::visit::visit_macro(self, node);
-        let args = macro_args(node);
-        if let Some(args) = &args {
-            syn::visit::visit_expr(self, args);
+        if let Some(args) = macro_args(node) {
+            syn::visit::visit_expr(self, &args);
         }
-        self.has_macro_args = args.is_some();
     }
 
     fn visit_ident(&mut self, node: &'ast syn::Ident) {
@@ -174,10 +170,10 @@ fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
     syn::parse2(TokenTree::Group(group).into()).ok()
 }
 
-fn is_composite_literal(expr: &syn::Expr, has_macro_args: bool) -> bool {
+fn is_composite_literal(expr: &syn::Expr) -> bool {
     match expr {
         syn::Expr::Struct(_) | syn::Expr::Array(_) | syn::Expr::Repeat(_) => true,
-        syn::Expr::Macro(node) => has_macro_args && node.mac.path.is_ident("vec"),
+        syn::Expr::Macro(node) => node.mac.path.is_ident("vec") && macro_args(&node.mac).is_some(),
         _ => false,
     }
 }
