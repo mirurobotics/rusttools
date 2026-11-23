@@ -790,7 +790,11 @@ fn long() {
     #[test]
     fn run_skips_unparseable_rs_file_and_continues() {
         let dir = tempdir().unwrap();
-        fs::write(dir.path().join("broken.rs"), "this is not valid rust at all {{{").unwrap();
+        fs::write(
+            dir.path().join("broken.rs"),
+            "this is not valid rust at all {{{",
+        )
+        .unwrap();
         fs::write(
             dir.path().join("test.rs"),
             r#"
