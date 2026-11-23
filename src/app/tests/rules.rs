@@ -251,6 +251,26 @@ fn run_check_mode_ignores_reexport_shell_after_allow_marker() {
 }
 
 #[test]
+fn run_check_mode_checks_imports_after_allow_marker() {
+    let dir = tempdir().unwrap();
+    fs::write(
+        dir.path().join("marked.rs"),
+        "// lint:allow(filelen)\nuse std::sync::Arc;\n",
+    )
+    .unwrap();
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(dir.path().to_path_buf());
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(&cli, &mut stdout, &mut stderr);
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 1);
+    assert!(stdout.contains("missing-header"));
+}
+
+#[test]
 fn run_skips_unparseable_rs_file_and_continues() {
     let dir = tempdir().unwrap();
     fs::write(
