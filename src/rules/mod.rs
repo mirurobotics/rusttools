@@ -25,6 +25,6 @@ pub struct Input<'a> {
 pub struct Diagnostic {
     pub file: PathBuf,
     pub line: usize,
-    pub rule: &'static str,
+    pub kind: &'static str,
     pub message: String,
 }

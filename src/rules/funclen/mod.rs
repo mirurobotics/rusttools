@@ -52,7 +52,7 @@ impl FnVisitor<'_> {
             self.diagnostics.push(Diagnostic {
                 file: self.path.to_path_buf(),
                 line: anchor,
-                rule: NAME,
+                kind: NAME,
                 message: format!("{target} is {count} lines (limit {})", self.max_lines),
             });
         }

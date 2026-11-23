@@ -120,7 +120,7 @@ fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut im
         let _ = writeln!(
             stdout,
             "{}:{}: {} [{}]",
-            display_path, diagnostic.line, diagnostic.message, diagnostic.rule
+            display_path, diagnostic.line, diagnostic.message, diagnostic.kind
         );
     }
     diagnostics.len()

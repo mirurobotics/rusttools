@@ -86,7 +86,7 @@ fn check_test_fn(item_fn: &syn::ItemFn, input: &Input, diagnostics: &mut Vec<Dia
             diagnostics.push(Diagnostic {
                 file: input.path.to_path_buf(),
                 line: line_numbers[0],
-                rule: NAME,
+                kind: NAME,
                 message: format!(
                     "{} assert_eq! calls on fields of `{receiver}` \u{2014} \
                      consider constructing an expected struct",
