@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::rules::{is_allowed_on_line_or_previous, is_code_line, Diagnostic, Input};
 
 // external crates
-use syn::parse::ParseStream;
+use proc_macro2::{Delimiter, Group, TokenTree};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
@@ -130,7 +130,7 @@ impl<'ast> Visit<'ast> for LiteralFinder {
             self.literals.push((span.start().line, span.end().line));
             return;
         }
-        visit_vec_elements(self, node);
+        visit_vec_body(self, node);
         syn::visit::visit_expr(self, node);
     }
 
@@ -143,10 +143,7 @@ fn is_collapsible_literal(expr: &syn::Expr) -> bool {
     if matches!(expr, syn::Expr::Struct(_) | syn::Expr::Array(_)) {
         return !has_block_expr(expr);
     }
-    let Some(elements) = vec_elements(expr) else {
-        return false;
-    };
-    !elements.iter().any(has_block_expr)
+    vec_body(expr).is_some_and(|body| !has_block_expr(&body))
 }
 
 fn has_block_expr(expr: &syn::Expr) -> bool {
@@ -162,55 +159,38 @@ struct BlockFinder {
 
 impl<'ast> Visit<'ast> for BlockFinder {
     fn visit_expr(&mut self, node: &'ast syn::Expr) {
-        if is_block_bearing(node) {
-            self.found = true;
-            return;
-        }
-        visit_vec_elements(self, node);
+        visit_vec_body(self, node);
         syn::visit::visit_expr(self, node);
     }
-}
 
-fn is_block_bearing(expr: &syn::Expr) -> bool {
-    matches!(
-        expr,
-        syn::Expr::Match(_)
-            | syn::Expr::If(_)
-            | syn::Expr::While(_)
-            | syn::Expr::Loop(_)
-            | syn::Expr::ForLoop(_)
-            | syn::Expr::Block(_)
-            | syn::Expr::Unsafe(_)
-            | syn::Expr::Async(_)
-            | syn::Expr::Closure(_)
-    )
-}
+    fn visit_block(&mut self, _: &'ast syn::Block) {
+        self.found = true;
+    }
 
-fn visit_vec_elements<V: for<'a> Visit<'a>>(visitor: &mut V, expr: &syn::Expr) {
-    for element in vec_elements(expr).unwrap_or_default() {
-        visitor.visit_expr(&element);
+    fn visit_arm(&mut self, _: &'ast syn::Arm) {
+        self.found = true;
+    }
+
+    fn visit_expr_closure(&mut self, _: &'ast syn::ExprClosure) {
+        self.found = true;
     }
 }
 
-fn vec_elements(expr: &syn::Expr) -> Option<Vec<syn::Expr>> {
+fn visit_vec_body<V: for<'a> Visit<'a>>(visitor: &mut V, expr: &syn::Expr) {
+    if let Some(body) = vec_body(expr) {
+        syn::visit::visit_expr(visitor, &body);
+    }
+}
+
+fn vec_body(expr: &syn::Expr) -> Option<syn::Expr> {
     let syn::Expr::Macro(node) = expr else {
         return None;
     };
     if !node.mac.path.is_ident("vec") {
         return None;
     }
-    node.mac.parse_body_with(parse_vec_body).ok()
-}
-
-fn parse_vec_body(input: ParseStream) -> syn::Result<Vec<syn::Expr>> {
-    let mut elements = Vec::new();
-    while !input.is_empty() {
-        elements.push(input.parse()?);
-        if !input.is_empty() && input.parse::<Option<syn::Token![;]>>()?.is_none() {
-            input.parse::<syn::Token![,]>()?;
-        }
-    }
-    Ok(elements)
+    let group = Group::new(Delimiter::Bracket, node.mac.tokens.clone());
+    syn::parse2(TokenTree::Group(group).into()).ok()
 }
 
 #[cfg(test)]
