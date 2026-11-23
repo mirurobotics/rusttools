@@ -37,19 +37,19 @@ pub fn check(
     // 1. Check group ordering: no group should appear after a later group
     let mut last_group: Option<ImportGroup> = None;
     for (group, stmt) in &classified {
-        if let Some(prev) = last_group {
-            if (*group as u8) < (prev as u8) {
-                diagnostics.push(Diagnostic {
-                    line: stmt.line,
-                    kind: "wrong-group-order".to_string(),
-                    message: format!(
-                        "{} import `{}` appears after {} imports",
-                        group, stmt.sort_key, prev
-                    ),
-                });
-            }
+        let Some(prev) = last_group.replace(*group) else {
+            continue;
+        };
+        if (*group as u8) < (prev as u8) {
+            diagnostics.push(Diagnostic {
+                line: stmt.line,
+                kind: "wrong-group-order".to_string(),
+                message: format!(
+                    "{} import `{}` appears after {} imports",
+                    group, stmt.sort_key, prev
+                ),
+            });
         }
-        last_group = Some(*group);
     }
 
     // 2. Check comment headers
@@ -143,20 +143,23 @@ fn find_header(block: &ImportBlock, first_line: usize, expected_label: &str) -> 
         match item {
             ImportBlockItem::BlankLine { .. } => continue,
             ImportBlockItem::Comment { text, .. } => {
-                let trimmed = text.trim();
-                if trimmed == expected_label {
-                    return HeaderMatch::Found;
-                }
-                if is_group_header(trimmed) {
-                    return HeaderMatch::Wrong(trimmed.to_string());
-                }
-                return HeaderMatch::Missing;
+                return header_match(text.trim(), expected_label);
             }
             // hit a use statement from another group
             ImportBlockItem::Use(_) => return HeaderMatch::Missing,
         }
     }
 
+    HeaderMatch::Missing
+}
+
+fn header_match(trimmed: &str, expected_label: &str) -> HeaderMatch {
+    if trimmed == expected_label {
+        return HeaderMatch::Found;
+    }
+    if is_group_header(trimmed) {
+        return HeaderMatch::Wrong(trimmed.to_string());
+    }
     HeaderMatch::Missing
 }
 
