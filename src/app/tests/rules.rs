@@ -37,11 +37,11 @@ fn threshold_flags_default_to_limits_default() {
     let defaults = Limits::default();
     assert_eq!(
         (parsed.field_assert, parsed.funclen, parsed.filelen),
-        (4, 50, 300)
+        (4, 30, 300)
     );
     assert_eq!(
         (defaults.field_assert, defaults.funclen, defaults.filelen),
-        (4, 50, 300)
+        (4, 30, 300)
     );
 }
 

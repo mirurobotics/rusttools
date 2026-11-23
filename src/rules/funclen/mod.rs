@@ -13,13 +13,9 @@ const NAME: &str = "funclen";
 
 /// Scan a source file for functions and closures whose bodies exceed
 /// `limits.funclen` non-blank, non-comment lines. A `limits.funclen` of 0 disables the
-/// check. Test code (files under a `tests` directory or named `tests.rs`, `#[cfg(test)]` items,
-/// `#[test]` functions, `#[cfg(feature = "test")]` items) is exempt.
+/// check.
 pub fn check(input: &Input) -> Vec<Diagnostic> {
     if input.limits.funclen == 0 {
-        return Vec::new();
-    }
-    if is_test_path(input.path) {
         return Vec::new();
     }
 
@@ -31,11 +27,6 @@ pub fn check(input: &Input) -> Vec<Diagnostic> {
     };
     visitor.visit_file(input.ast);
     visitor.diagnostics
-}
-
-fn is_test_path(path: &Path) -> bool {
-    path.file_name().is_some_and(|name| name == "tests.rs")
-        || path.components().any(|c| c.as_os_str() == "tests")
 }
 
 struct FnVisitor<'a> {
@@ -67,49 +58,19 @@ impl FnVisitor<'_> {
 }
 
 impl<'ast> Visit<'ast> for FnVisitor<'_> {
-    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
-        if is_test_cfg(&node.attrs) {
-            return;
-        }
-        syn::visit::visit_item_mod(self, node);
-    }
-
-    fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
-        if is_test_cfg(&node.attrs) {
-            return;
-        }
-        syn::visit::visit_item_impl(self, node);
-    }
-
-    fn visit_item_trait(&mut self, node: &'ast syn::ItemTrait) {
-        if is_test_cfg(&node.attrs) {
-            return;
-        }
-        syn::visit::visit_item_trait(self, node);
-    }
-
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-        if is_test_cfg(&node.attrs) || is_test_fn(&node.attrs) {
-            return;
-        }
         let line = node.sig.fn_token.span.start().line;
         self.check_block(&node.block, line, Some(node.sig.ident.to_string()));
         syn::visit::visit_item_fn(self, node);
     }
 
     fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-        if is_test_cfg(&node.attrs) || is_test_fn(&node.attrs) {
-            return;
-        }
         let line = node.sig.fn_token.span.start().line;
         self.check_block(&node.block, line, Some(node.sig.ident.to_string()));
         syn::visit::visit_impl_item_fn(self, node);
     }
 
     fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
-        if is_test_cfg(&node.attrs) || is_test_fn(&node.attrs) {
-            return;
-        }
         if let Some(block) = &node.default {
             let line = node.sig.fn_token.span.start().line;
             self.check_block(block, line, Some(node.sig.ident.to_string()));
@@ -181,26 +142,6 @@ fn is_composite_literal(expr: &syn::Expr) -> bool {
         syn::Expr::Macro(node) => node.mac.path.is_ident("vec"),
         _ => false,
     }
-}
-
-/// True for `#[cfg(test)]`, `#[cfg(feature = "test")]`, `#[cfg(any(test, ...))]`
-/// and similar test-gating cfg attributes.
-fn is_test_cfg(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        if let syn::Meta::List(ref list) = attr.meta {
-            return list.path.is_ident("cfg") && list.tokens.to_string().contains("test");
-        }
-        false
-    })
-}
-
-/// True for `#[test]`, `#[tokio::test]`, and `#[tokio::test(...)]` functions.
-fn is_test_fn(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| match &attr.meta {
-        syn::Meta::Path(path) => path.segments.last().is_some_and(|s| s.ident == "test"),
-        syn::Meta::List(list) => list.path.segments.last().is_some_and(|s| s.ident == "test"),
-        _ => false,
-    })
 }
 
 #[cfg(test)]
