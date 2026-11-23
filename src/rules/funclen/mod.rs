@@ -1,53 +1,41 @@
 // standard crates
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+// internal crates
+use crate::rules::{Diagnostic, Input};
 
 // external crates
 use syn::visit::Visit;
 
-/// A single lint violation: a function or closure whose body exceeds the
-/// maximum number of non-blank, non-comment lines.
-pub struct Violation {
-    pub file: PathBuf,
-    /// 1-based line of the `fn` keyword (or closure start).
-    pub line: usize,
-    /// `None` for closures.
-    pub name: Option<String>,
-    /// Non-blank, non-comment body lines.
-    pub count: usize,
-    pub limit: usize,
-}
+const NAME: &str = "funclen";
 
 /// Scan a source file for functions and closures whose bodies exceed
-/// `max_lines` non-blank, non-comment lines. A `max_lines` of 0 disables the
+/// `limits.funclen` non-blank, non-comment lines. A `limits.funclen` of 0 disables the
 /// check. Test code (files under a `tests` directory, `#[cfg(test)]` items,
 /// `#[test]` functions, `#[cfg(feature = "test")]` items) is exempt.
-pub fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Violation> {
-    if max_lines == 0 {
+pub fn check(input: &Input) -> Vec<Diagnostic> {
+    if input.limits.funclen == 0 {
         return Vec::new();
     }
-    if path.components().any(|c| c.as_os_str() == "tests") {
+    if input.path.components().any(|c| c.as_os_str() == "tests") {
         return Vec::new();
     }
-    let file = match syn::parse_file(source) {
-        Ok(f) => f,
-        Err(_) => return Vec::new(),
-    };
 
     let mut visitor = FnVisitor {
-        path,
-        lines: source.lines().collect(),
-        max_lines,
-        violations: Vec::new(),
+        path: input.path,
+        lines: input.source.lines().collect(),
+        max_lines: input.limits.funclen,
+        diagnostics: Vec::new(),
     };
-    visitor.visit_file(&file);
-    visitor.violations
+    visitor.visit_file(input.ast);
+    visitor.diagnostics
 }
 
 struct FnVisitor<'a> {
     path: &'a Path,
     lines: Vec<&'a str>,
     max_lines: usize,
-    violations: Vec<Violation>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl FnVisitor<'_> {
@@ -57,12 +45,15 @@ impl FnVisitor<'_> {
         }
         let count = count_body_lines(&self.lines, block);
         if count > self.max_lines {
-            self.violations.push(Violation {
+            let target = match name {
+                Some(name) => format!("function `{name}`"),
+                None => "closure".to_string(),
+            };
+            self.diagnostics.push(Diagnostic {
                 file: self.path.to_path_buf(),
                 line: anchor,
-                name,
-                count,
-                limit: self.max_lines,
+                rule: NAME,
+                message: format!("{target} is {count} lines (limit {})", self.max_lines),
             });
         }
     }
@@ -184,6 +175,9 @@ fn is_test_fn(attrs: &[syn::Attribute]) -> bool {
 mod tests {
     use super::*;
 
+    // internal crates
+    use crate::rules::Limits;
+
     fn body(n: usize) -> String {
         "    let x = 1;\n".repeat(n)
     }
@@ -192,8 +186,22 @@ mod tests {
         format!("fn sample() {{\n{}}}\n", body(n))
     }
 
-    fn check(source: &str, max_lines: usize) -> Vec<Violation> {
+    fn check(source: &str, max_lines: usize) -> Vec<Diagnostic> {
         check_file(Path::new("src/lib.rs"), source, max_lines)
+    }
+
+    fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
+        let ast = syn::parse_file(source).unwrap();
+        let limits = Limits {
+            funclen: max_lines,
+            field_assert: 0,
+        };
+        super::check(&Input {
+            path,
+            source,
+            ast: &ast,
+            limits: &limits,
+        })
     }
 
     #[test]
@@ -210,10 +218,8 @@ mod tests {
     fn over_limit_reports_violation() {
         let violations = check(&src_fn(4), 3);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].name.as_deref(), Some("sample"));
-        assert_eq!(violations[0].count, 4);
         assert_eq!(violations[0].line, 1);
-        assert_eq!(violations[0].limit, 3);
+        assert_eq!(violations[0].message, "function `sample` is 4 lines (limit 3)");
     }
 
     #[test]
@@ -237,9 +243,9 @@ mod tests {
         let violations = check(&src, 3);
         let closure = violations
             .iter()
-            .find(|v| v.name.is_none())
+            .find(|v| v.message.starts_with("closure"))
             .expect("closure violation");
-        assert_eq!(closure.count, 4);
+        assert_eq!(closure.message, "closure is 4 lines (limit 3)");
         assert_eq!(closure.line, 2);
     }
 
@@ -251,7 +257,7 @@ mod tests {
         );
         let violations = check(&src, 3);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].name.as_deref(), Some("method"));
+        assert!(violations[0].message.starts_with("function `method`"));
     }
 
     #[test]
@@ -262,7 +268,7 @@ mod tests {
         );
         let violations = check(&src, 3);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].name.as_deref(), Some("with_body"));
+        assert!(violations[0].message.starts_with("function `with_body`"));
     }
 
     #[test]
@@ -325,10 +331,5 @@ mod tests {
     #[test]
     fn threshold_zero_disables() {
         assert!(check(&src_fn(100), 0).is_empty());
-    }
-
-    #[test]
-    fn unparseable_source_returns_empty() {
-        assert!(check("this is not valid rust at all {{{", 3).is_empty());
     }
 }
