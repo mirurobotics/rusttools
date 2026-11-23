@@ -158,6 +158,12 @@ fn tests_rs_file_exempt() {
 }
 
 #[test]
+fn file_ending_in_tests_rs_not_exempt() {
+    let violations = check_file(Path::new("src/contests.rs"), &src_fn(10), 3);
+    assert_eq!(violations.len(), 1);
+}
+
+#[test]
 fn suppression_on_line_above_fn() {
     let src = format!("// lint:allow(funclen)\nfn sample() {{\n{}}}\n", body(10));
     assert!(check(&src, 3).is_empty());
