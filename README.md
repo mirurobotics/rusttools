@@ -18,7 +18,7 @@ Inside this repo, `cargo run -- <flags>` runs the same binary.
 | `--path <dir>` | | Files to check for imports, `funclen` and `filelen` |
 | `--fix` | off | Rewrite import blocks in place |
 | `--config <file>` | nearest `.lint-imports.toml` | Import group labels and internal crates |
-| `--funclen-threshold <n>` | 30 | Max code lines per function, tests included; a multi-line struct, array or `vec!` literal counts as one; 0 disables |
+| `--funclen-threshold <n>` | 30 | Max code lines per function, tests included; a multi-line struct, array or `vec!` literal counts as one unless it contains a block, match or closure; 0 disables |
 | `--filelen-threshold <n>` | 300 | Max code lines per file, tests included; 0 disables |
 | `--assert-paths <dir>...` | | Test files to check for `field-by-field-assert` |
 | `--assert-threshold <n>` | 4 | Field asserts on one receiver that trigger it |

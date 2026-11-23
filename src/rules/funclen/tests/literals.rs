@@ -37,10 +37,14 @@ fn sample() {
 }
 
 #[test]
-fn vec_repeat_collapses_and_other_macros_count_every_line() {
+fn repeat_literals_collapse_and_other_macros_count_every_line() {
     let src = "\
 fn sample() {
     let zs = vec![
+        0;
+        3
+    ];
+    let ws = [
         0;
         3
     ];
@@ -50,7 +54,7 @@ fn sample() {
     );
 }
 ";
-    assert_eq!(count_lines(src), 5);
+    assert_eq!(count_lines(src), 6);
 }
 
 #[test]
@@ -60,7 +64,7 @@ fn unparseable_vec_counts_every_line() {
 }
 
 #[test]
-fn block_expressions_inside_literal_counted() {
+fn match_inside_literal_counted() {
     let src = "\
 fn sample() {
     let d = D {
@@ -68,30 +72,57 @@ fn sample() {
             1 => \"a\",
             _ => \"b\",
         },
-        n: loop {
-            break 1;
-        },
-        f: vec![|| 1],
     };
 }
 ";
-    assert_eq!(
-        check(src, 9)[0].message,
-        "function `sample` is 10 lines (limit 9)"
-    );
+    assert_eq!(count_lines(src), 6);
+}
+
+#[test]
+fn match_inside_macro_inside_literal_counted() {
+    let src = "\
+fn sample() {
+    let s = S {
+        msg: format!(\"{}\", match k {
+            1 => \"a\",
+            _ => \"b\",
+        }),
+    };
+}
+";
+    assert_eq!(count_lines(src), 6);
+}
+
+#[test]
+fn closure_inside_literal_counted() {
+    let src = "fn sample() {\n    let d = D {\n        f: |x| x\n            + 1,\n    };\n}\n";
+    assert_eq!(count_lines(src), 4);
 }
 
 #[test]
 fn closure_inside_vec_counted() {
+    let src = "fn sample() {\n    let fs = vec![|x| x\n        + 1];\n}\n";
+    assert_eq!(count_lines(src), 2);
+}
+
+#[test]
+fn block_inside_nested_vec_counted() {
     let src = "\
 fn sample() {
-    let fs = vec![|| {
-        let x = 1;
-        let y = 2;
-    }];
+    let d = D {
+        f: vec![loop {
+            break 1;
+        }],
+    };
 }
 ";
-    assert_eq!(count_lines(src), 4);
+    assert_eq!(count_lines(src), 5);
+}
+
+#[test]
+fn literal_inside_non_collapsing_vec_collapses() {
+    let src = "fn sample() {\n    let v = vec![|| 1, S {\n        a: 1,\n    }];\n}\n";
+    assert_eq!(count_lines(src), 1);
 }
 
 #[test]

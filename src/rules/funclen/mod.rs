@@ -89,8 +89,7 @@ impl<'ast> Visit<'ast> for FnVisitor<'_> {
 }
 
 /// Count the non-blank, non-comment source lines strictly between the block's
-/// braces (the brace lines themselves are excluded), counting a multi-line
-/// literal without nested blocks as one line.
+/// braces (the brace lines themselves are excluded), skipping `literal_tail_lines`.
 fn count_body_lines(lines: &[&str], block: &syn::Block) -> usize {
     let open = block.brace_token.span.open().start().line;
     let close = block.brace_token.span.close().start().line;
@@ -119,78 +118,66 @@ fn literal_tail_lines(block: &syn::Block) -> HashSet<usize> {
 #[derive(Default)]
 struct LiteralFinder {
     literals: Vec<(usize, usize)>,
-    code_starts: HashSet<usize>,
+    code_starts: Vec<usize>,
+    has_block: bool,
 }
 
 impl<'ast> Visit<'ast> for LiteralFinder {
     fn visit_expr(&mut self, node: &'ast syn::Expr) {
+        let outer_has_block = std::mem::take(&mut self.has_block);
+        let literal_mark = self.literals.len();
         let span = node.span();
-        self.code_starts.insert(span.start().line);
-        if is_collapsible_literal(node) {
-            self.literals.push((span.start().line, span.end().line));
-            return;
+        self.code_starts.push(span.start().line);
+        let start_mark = self.code_starts.len();
+        let args = macro_args(node);
+        if let Some(args) = &args {
+            syn::visit::visit_expr(self, args);
         }
-        visit_vec_body(self, node);
         syn::visit::visit_expr(self, node);
+        if is_composite_literal(node, args.is_some()) && !self.has_block {
+            self.literals.truncate(literal_mark);
+            self.code_starts.truncate(start_mark);
+            self.literals.push((span.start().line, span.end().line));
+        }
+        self.has_block |= outer_has_block;
+    }
+
+    fn visit_block(&mut self, node: &'ast syn::Block) {
+        self.has_block = true;
+        syn::visit::visit_block(self, node);
+    }
+
+    fn visit_arm(&mut self, node: &'ast syn::Arm) {
+        self.has_block = true;
+        syn::visit::visit_arm(self, node);
+    }
+
+    fn visit_expr_closure(&mut self, node: &'ast syn::ExprClosure) {
+        self.has_block = true;
+        syn::visit::visit_expr_closure(self, node);
     }
 
     fn visit_ident(&mut self, node: &'ast syn::Ident) {
-        self.code_starts.insert(node.span().start().line);
+        self.code_starts.push(node.span().start().line);
     }
 }
 
-fn is_collapsible_literal(expr: &syn::Expr) -> bool {
-    if matches!(expr, syn::Expr::Struct(_) | syn::Expr::Array(_)) {
-        return !has_block_expr(expr);
-    }
-    vec_body(expr).is_some_and(|body| !has_block_expr(&body))
-}
-
-fn has_block_expr(expr: &syn::Expr) -> bool {
-    let mut finder = BlockFinder::default();
-    finder.visit_expr(expr);
-    finder.found
-}
-
-#[derive(Default)]
-struct BlockFinder {
-    found: bool,
-}
-
-impl<'ast> Visit<'ast> for BlockFinder {
-    fn visit_expr(&mut self, node: &'ast syn::Expr) {
-        visit_vec_body(self, node);
-        syn::visit::visit_expr(self, node);
-    }
-
-    fn visit_block(&mut self, _: &'ast syn::Block) {
-        self.found = true;
-    }
-
-    fn visit_arm(&mut self, _: &'ast syn::Arm) {
-        self.found = true;
-    }
-
-    fn visit_expr_closure(&mut self, _: &'ast syn::ExprClosure) {
-        self.found = true;
-    }
-}
-
-fn visit_vec_body<V: for<'a> Visit<'a>>(visitor: &mut V, expr: &syn::Expr) {
-    if let Some(body) = vec_body(expr) {
-        syn::visit::visit_expr(visitor, &body);
-    }
-}
-
-fn vec_body(expr: &syn::Expr) -> Option<syn::Expr> {
+fn macro_args(expr: &syn::Expr) -> Option<syn::Expr> {
     let syn::Expr::Macro(node) = expr else {
         return None;
     };
-    if !node.mac.path.is_ident("vec") {
-        return None;
-    }
     let group = Group::new(Delimiter::Bracket, node.mac.tokens.clone());
-    syn::parse2(TokenTree::Group(group).into()).ok()
+    let args: syn::Expr = syn::parse2(TokenTree::Group(group).into()).ok()?;
+    let is_list = matches!(args, syn::Expr::Array(_));
+    (is_list || node.mac.path.is_ident("vec")).then_some(args)
+}
+
+fn is_composite_literal(expr: &syn::Expr, has_args: bool) -> bool {
+    match expr {
+        syn::Expr::Struct(_) | syn::Expr::Array(_) | syn::Expr::Repeat(_) => true,
+        syn::Expr::Macro(node) => has_args && node.mac.path.is_ident("vec"),
+        _ => false,
+    }
 }
 
 #[cfg(test)]
