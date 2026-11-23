@@ -28,10 +28,7 @@ fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
 }
 
 fn count_lines(source: &str) -> usize {
-    let ast = syn::parse_file(source).unwrap();
-    let syn::Item::Fn(item) = &ast.items[0] else {
-        panic!("expected a function");
-    };
+    let item: syn::ItemFn = syn::parse_str(source).unwrap();
     let lines: Vec<&str> = source.lines().collect();
     count_body_lines(&lines, &item.block)
 }
@@ -211,12 +208,13 @@ fn sample() {
         n: loop {
             break 1;
         },
+        f: vec![|| 1],
     };
 }
 ";
     assert_eq!(
-        check(src, 8)[0].message,
-        "function `sample` is 9 lines (limit 8)"
+        check(src, 9)[0].message,
+        "function `sample` is 10 lines (limit 9)"
     );
 }
 

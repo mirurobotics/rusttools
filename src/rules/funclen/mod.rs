@@ -172,12 +172,18 @@ impl<'ast> Visit<'ast> for BlockFinder {
 }
 
 fn is_block_bearing(expr: &syn::Expr) -> bool {
-    match expr {
-        syn::Expr::Match(_) | syn::Expr::If(_) | syn::Expr::While(_) => true,
-        syn::Expr::Loop(_) | syn::Expr::ForLoop(_) | syn::Expr::Block(_) => true,
-        syn::Expr::Unsafe(_) | syn::Expr::Async(_) | syn::Expr::Closure(_) => true,
-        _ => false,
-    }
+    matches!(
+        expr,
+        syn::Expr::Match(_)
+            | syn::Expr::If(_)
+            | syn::Expr::While(_)
+            | syn::Expr::Loop(_)
+            | syn::Expr::ForLoop(_)
+            | syn::Expr::Block(_)
+            | syn::Expr::Unsafe(_)
+            | syn::Expr::Async(_)
+            | syn::Expr::Closure(_)
+    )
 }
 
 fn visit_vec_elements<V: for<'a> Visit<'a>>(visitor: &mut V, expr: &syn::Expr) {
