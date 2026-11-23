@@ -1,17 +1,59 @@
 mod fieldassert;
+mod filelen;
 mod funclen;
 
 // standard crates
 use std::path::{Path, PathBuf};
 
+// external crates
+use clap::Args;
+
+const DEFAULT_FIELD_ASSERT: usize = 4;
+const DEFAULT_FUNCLEN: usize = 50;
+const DEFAULT_FILELEN: usize = 300;
+
+pub const ALLOW_MARKER: &str = "lint:allow(";
+
+#[derive(Args)]
 pub struct Limits {
-    pub funclen: usize,
+    /// Minimum field-asserts on the same receiver to flag (default: 4)
+    #[arg(
+        long = "assert-threshold",
+        value_name = "ASSERT_THRESHOLD",
+        default_value_t = DEFAULT_FIELD_ASSERT
+    )]
     pub field_assert: usize,
+
+    /// Max non-blank, non-comment body lines per function (0 disables)
+    #[arg(
+        long = "funclen-threshold",
+        value_name = "FUNCLEN_THRESHOLD",
+        default_value_t = DEFAULT_FUNCLEN
+    )]
+    pub funclen: usize,
+
+    #[arg(
+        long = "filelen-threshold",
+        value_name = "FILELEN_THRESHOLD",
+        default_value_t = DEFAULT_FILELEN,
+        help = "Max non-blank, non-comment lines per file (0 disables)"
+    )]
+    pub filelen: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            field_assert: DEFAULT_FIELD_ASSERT,
+            funclen: DEFAULT_FUNCLEN,
+            filelen: DEFAULT_FILELEN,
+        }
+    }
 }
 
 pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
 
-pub const PATH_RULES: &[Rule] = &[funclen::check];
+pub const PATH_RULES: &[Rule] = &[funclen::check, filelen::check];
 
 pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
@@ -32,6 +74,15 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     }
     diagnostics.sort_by(|a, b| a.file.cmp(&b.file).then(a.line.cmp(&b.line)));
     diagnostics
+}
+
+pub fn has_allow_marker(line: &str, rule: &str) -> bool {
+    line.contains(&format!("{ALLOW_MARKER}{rule})"))
+}
+
+pub fn is_code_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    !trimmed.is_empty() && !trimmed.starts_with("//")
 }
 
 pub type Rule = fn(&Input) -> Vec<Diagnostic>;
@@ -81,10 +132,7 @@ mod tests {
         let b = dir.path().join("b.rs");
         std::fs::write(&a, "").unwrap();
         std::fs::write(&b, "").unwrap();
-        let limits = Limits {
-            funclen: 0,
-            field_assert: 0,
-        };
+        let limits = Limits::default();
 
         let diagnostics = check_files(&[b.clone(), a.clone()], &[late, early], &limits);
 

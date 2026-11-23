@@ -15,16 +15,18 @@ Inside this repo, `cargo run -- <flags>` runs the same binary.
 
 | Flag | Default | Purpose |
 | --- | --- | --- |
-| `--path <dir>` | | Files to check for imports and `funclen` |
+| `--path <dir>` | | Files to check for imports, `funclen` and `filelen` |
 | `--fix` | off | Rewrite import blocks in place |
 | `--config <file>` | nearest `.lint-imports.toml` | Import group labels and internal crates |
 | `--funclen-threshold <n>` | 50 | Max code lines per function; 0 disables |
+| `--filelen-threshold <n>` | 300 | Max code lines per file, tests included; 0 disables |
 | `--assert-paths <dir>...` | | Test files to check for `field-by-field-assert` |
 | `--assert-threshold <n>` | 4 | Field asserts on one receiver that trigger it |
 
 To suppress a rule:
 
 - `funclen`: put `// lint:allow(funclen)` on the line with the `fn` keyword (or a closure's opening `|`), or on the line directly above it.
+- `filelen`: put `// lint:allow(filelen)` on the file's first line.
 - `field-by-field-assert`: put `// lint:allow(field-by-field-assert)` anywhere from the line with the test body's opening brace through the line with its closing brace.
 
 ## Rules covered by clippy and rustc
