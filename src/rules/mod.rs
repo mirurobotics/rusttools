@@ -76,6 +76,16 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     diagnostics
 }
 
+pub fn is_suppressed(lines: &[&str], line: usize, rule: &str) -> bool {
+    let has_marker = |n: usize| {
+        n >= 1
+            && lines
+                .get(n - 1)
+                .is_some_and(|text| has_allow_marker(text, rule))
+    };
+    has_marker(line) || has_marker(line.saturating_sub(1))
+}
+
 pub fn has_allow_marker(line: &str, rule: &str) -> bool {
     line.contains(&format!("{ALLOW_MARKER}{rule})"))
 }
