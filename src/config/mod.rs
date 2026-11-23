@@ -1,5 +1,4 @@
 // standard crates
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // external crates
@@ -45,21 +44,15 @@ impl Default for Labels {
 }
 
 impl Config {
-    pub fn from_file(path: &Path, stderr: &mut impl Write) -> Self {
-        match std::fs::read_to_string(path) {
-            Ok(content) => toml::from_str(&content).unwrap_or_else(|e| {
-                let _ = writeln!(stderr, "warning: could not parse {}: {e}", path.display());
-                Self::default()
-            }),
-            Err(e) => {
-                let _ = writeln!(stderr, "warning: could not read {}: {e}", path.display());
-                Self::default()
-            }
-        }
+    pub fn from_file(path: &Path) -> Result<Self, String> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| format!("could not read {}: {e}", path.display()))?;
+        toml::from_str(&content)
+            .map_err(|e| format!("could not parse {}: {e}", path.display()))
     }
 
     /// Walk up from `start` looking for `.lint-imports.toml`.
-    pub fn find_from(start: &Path, stderr: &mut impl Write) -> Self {
+    pub fn find_from(start: &Path) -> Result<Self, String> {
         let start = if start.is_file() {
             start.parent().map(Path::to_path_buf).unwrap_or_default()
         } else {
@@ -70,11 +63,11 @@ impl Config {
         while let Some(d) = dir {
             let candidate = d.join(".lint-imports.toml");
             if candidate.is_file() {
-                return Self::from_file(&candidate, stderr);
+                return Self::from_file(&candidate);
             }
             dir = d.parent().map(Path::to_path_buf);
         }
-        Self::default()
+        Ok(Self::default())
     }
 }
 
@@ -109,7 +102,7 @@ external = "// external"
         )
         .unwrap();
 
-        let config = Config::from_file(&path, &mut std::io::sink());
+        let config = Config::from_file(&path).unwrap();
         assert_eq!(config.internal_crates, vec!["my_lib", "other_lib"]);
         assert_eq!(config.labels.standard, "// std");
         assert_eq!(config.labels.internal, "// internal");
@@ -117,24 +110,21 @@ external = "// external"
     }
 
     #[test]
-    fn from_file_missing_returns_default() {
-        let config = Config::from_file(
-            Path::new("/nonexistent/.lint-imports.toml"),
-            &mut std::io::sink(),
-        );
-        assert!(config.internal_crates.is_empty());
-        assert_eq!(config.labels.standard, "// standard crates");
+    fn from_file_missing_returns_read_error() {
+        let path = Path::new("/nonexistent/.lint-imports.toml");
+        let error = Config::from_file(path).unwrap_err();
+        assert!(error.starts_with("could not read /nonexistent/.lint-imports.toml"));
     }
 
     #[test]
-    fn from_file_malformed_returns_default() {
+    fn from_file_malformed_returns_parse_error() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(".lint-imports.toml");
         fs::write(&path, "this is not valid toml [[[").unwrap();
 
-        let config = Config::from_file(&path, &mut std::io::sink());
-        assert!(config.internal_crates.is_empty());
-        assert_eq!(config.labels.standard, "// standard crates");
+        let error = Config::from_file(&path).unwrap_err();
+        let expected = format!("could not parse {}", path.display());
+        assert!(error.starts_with(&expected));
     }
 
     #[test]
@@ -148,14 +138,14 @@ external = "// external"
         )
         .unwrap();
 
-        let config = Config::find_from(&child, &mut std::io::sink());
+        let config = Config::find_from(&child).unwrap();
         assert_eq!(config.internal_crates, vec!["found_it"]);
     }
 
     #[test]
     fn find_from_no_config_returns_default() {
         let dir = tempfile::tempdir().unwrap();
-        let config = Config::find_from(dir.path(), &mut std::io::sink());
+        let config = Config::find_from(dir.path()).unwrap();
         assert!(config.internal_crates.is_empty());
         assert_eq!(config.labels.standard, "// standard crates");
     }

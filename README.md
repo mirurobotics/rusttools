@@ -29,7 +29,7 @@ To suppress a rule:
 
 ## Rules covered by clippy and rustc
 
-Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimplement them. rusttools enforces them on itself; copy the `[lints.rust]` and `[lints.clippy]` tables from its [`Cargo.toml`](Cargo.toml) and its [`clippy.toml`](clippy.toml) into each consuming repo.
+Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimplement them. rusttools enforces them on itself; copy the `[lints.rust]` and `[lints.clippy]` tables from its [`Cargo.toml`](Cargo.toml) and its [`clippy.toml`](clippy.toml) into each consuming repo. In a workspace, put them under `[workspace.lints.rust]` and `[workspace.lints.clippy]` in the root manifest and add `lints.workspace = true` to each member; cargo ignores a `[lints]` table in a virtual manifest.
 
 | gotools rule | Lint |
 | --- | --- |

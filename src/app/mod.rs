@@ -195,11 +195,15 @@ struct Totals {
 }
 
 fn load_config(base_dir: &Path, cli: &Cli, stderr: &mut impl Write) -> Config {
-    match (&cli.config, &cli.path) {
-        (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg), stderr),
-        (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path), stderr),
-        (None, None) => Config::default(),
-    }
+    let loaded = match (&cli.config, &cli.path) {
+        (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg)),
+        (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path)),
+        (None, None) => Ok(Config::default()),
+    };
+    loaded.unwrap_or_else(|warning| {
+        let _ = writeln!(stderr, "warning: {warning}");
+        Config::default()
+    })
 }
 
 fn rust_files(base_dir: &Path, path: &Path) -> Vec<PathBuf> {
@@ -347,6 +351,26 @@ mod tests {
             assert_threshold: 4,
             funclen_threshold: 50,
         }
+    }
+
+    #[test]
+    fn run_warns_and_uses_default_config_when_config_is_malformed() {
+        let dir = tempdir().unwrap();
+        let config = dir.path().join(".lint-imports.toml");
+        fs::write(&config, "this is not valid toml [[[").unwrap();
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit_code = run(
+            &cli(dir.path().to_path_buf(), false, Some(config.clone())),
+            &mut stdout,
+            &mut stderr,
+        );
+
+        assert_eq!(exit_code, 0);
+        let stderr = String::from_utf8(stderr).unwrap();
+        let expected = format!("warning: could not parse {}", config.display());
+        assert!(stderr.starts_with(&expected));
     }
 
     #[test]
