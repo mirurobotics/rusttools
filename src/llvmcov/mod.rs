@@ -112,7 +112,9 @@ fn read_threshold(covgate: &Path) -> Result<f64, String> {
     let content = std::fs::read_to_string(covgate)
         .map_err(|e| format!("could not read {}: {e}", covgate.display()))?;
     let first_line = content.lines().next().unwrap_or_default().trim();
-    first_line.parse::<f64>().map_err(|e| format!("could not parse {}: {e}", covgate.display()))
+    first_line
+        .parse::<f64>()
+        .map_err(|e| format!("could not parse {}: {e}", covgate.display()))
 }
 
 #[derive(Deserialize)]
