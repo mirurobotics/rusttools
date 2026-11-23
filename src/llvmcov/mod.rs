@@ -62,7 +62,10 @@ fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
         .parse::<f64>()
         .map_err(|e| format!("could not parse {}: {e}", covgate_file.display()))?;
     if !(0.0..=100.0).contains(&minimum) {
-        return Err(format!("{} must be between 0 and 100", covgate_file.display()));
+        return Err(format!(
+            "{} must be between 0 and 100",
+            covgate_file.display()
+        ));
     }
     if minimum == 0.0 {
         return Ok(Threshold::Skip);

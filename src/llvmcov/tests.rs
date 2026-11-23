@@ -174,6 +174,7 @@ fn read_threshold_parses_first_line() {
     let dir = tempdir().unwrap();
     let cases = [
         ("minimum", "93.33\n", Threshold::Min(93.33)),
+        ("maximum", "100\n", Threshold::Min(100.0)),
         ("zero skips", "0\n", Threshold::Skip),
         ("padded", "  85 \nignored\n", Threshold::Min(85.0)),
     ];
