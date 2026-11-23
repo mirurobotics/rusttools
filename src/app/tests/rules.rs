@@ -8,15 +8,9 @@ use crate::app::*;
 use tempfile::tempdir;
 
 fn assert_cli(assert_paths: Vec<PathBuf>) -> Cli {
-    Cli {
-        path: None,
-        fix: false,
-        config: None,
-        assert_paths,
-        assert_threshold: 4,
-        funclen_threshold: 50,
-        filelen_threshold: 300,
-    }
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.assert_paths = assert_paths;
+    cli
 }
 
 #[test]
@@ -89,15 +83,11 @@ fn run_assert_check_skipped_when_no_paths() {
 }
 
 fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
-    Cli {
-        path: Some(path),
-        fix,
-        config: None,
-        assert_paths: Vec::new(),
-        assert_threshold: 4,
-        funclen_threshold,
-        filelen_threshold: 300,
-    }
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(path);
+    cli.fix = fix;
+    cli.limits.funclen = funclen_threshold;
+    cli
 }
 
 fn write_over_limit_fn(dir: &Path) {

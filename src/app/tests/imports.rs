@@ -8,15 +8,11 @@ use crate::app::*;
 use tempfile::tempdir;
 
 fn cli(path: PathBuf, fix: bool, config: Option<PathBuf>) -> Cli {
-    Cli {
-        path: Some(path),
-        fix,
-        config,
-        assert_paths: Vec::new(),
-        assert_threshold: 4,
-        funclen_threshold: 50,
-        filelen_threshold: 300,
-    }
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(path);
+    cli.fix = fix;
+    cli.config = config;
+    cli
 }
 
 #[test]

@@ -5,9 +5,33 @@ mod funclen;
 // standard crates
 use std::path::{Path, PathBuf};
 
+// external crates
+use clap::Args;
+
+#[derive(Args, Default)]
 pub struct Limits {
-    pub funclen: usize,
+    /// Minimum field-asserts on the same receiver to flag (default: 4)
+    #[arg(
+        long = "assert-threshold",
+        value_name = "ASSERT_THRESHOLD",
+        default_value_t = 4
+    )]
     pub field_assert: usize,
+
+    /// Max non-blank, non-comment body lines per function (0 disables)
+    #[arg(
+        long = "funclen-threshold",
+        value_name = "FUNCLEN_THRESHOLD",
+        default_value_t = 50
+    )]
+    pub funclen: usize,
+
+    #[arg(
+        long = "filelen-threshold",
+        value_name = "FILELEN_THRESHOLD",
+        default_value_t = 300,
+        help = "Max non-blank, non-comment lines per file (0 disables)"
+    )]
     pub filelen: usize,
 }
 
@@ -34,6 +58,15 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     }
     diagnostics.sort_by(|a, b| a.file.cmp(&b.file).then(a.line.cmp(&b.line)));
     diagnostics
+}
+
+pub fn has_allow_marker(line: &str, rule: &str) -> bool {
+    line.contains(&format!("lint:allow({rule})"))
+}
+
+pub fn is_code_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    !trimmed.is_empty() && !trimmed.starts_with("//")
 }
 
 pub type Rule = fn(&Input) -> Vec<Diagnostic>;
@@ -83,11 +116,7 @@ mod tests {
         let b = dir.path().join("b.rs");
         std::fs::write(&a, "").unwrap();
         std::fs::write(&b, "").unwrap();
-        let limits = Limits {
-            funclen: 0,
-            field_assert: 0,
-            filelen: 0,
-        };
+        let limits = Limits::default();
 
         let diagnostics = check_files(&[b.clone(), a.clone()], &[late, early], &limits);
 
