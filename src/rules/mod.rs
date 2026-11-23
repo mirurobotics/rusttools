@@ -1,5 +1,5 @@
-pub mod fieldassert;
-pub mod funclen;
+mod fieldassert;
+mod funclen;
 
 // standard crates
 use std::path::{Path, PathBuf};
