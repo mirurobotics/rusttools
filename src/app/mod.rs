@@ -62,18 +62,14 @@ fn run_from_dir(
     // Run import checking if --path is provided.
     if let Some(ref path) = cli.path {
         let config = load_config(base_dir, cli, stderr);
-        let classifier = Classifier::new(&config);
+        let imports = ImportCheck {
+            fix: cli.fix,
+            classifier: Classifier::new(&config),
+            config,
+        };
 
         for file_path in rust_files(base_dir, path) {
-            process_file(
-                &file_path,
-                cli,
-                &classifier,
-                &config,
-                &mut totals,
-                stdout,
-                stderr,
-            );
+            process_file(&file_path, &imports, &mut totals, stdout, stderr);
         }
     }
 
@@ -186,6 +182,12 @@ fn run_funclen_check(
     all_violations
 }
 
+struct ImportCheck {
+    fix: bool,
+    classifier: Classifier,
+    config: Config,
+}
+
 #[derive(Default)]
 struct Totals {
     diagnostics: usize,
@@ -222,9 +224,7 @@ fn resolve_input_path(base_dir: &Path, path: &Path) -> PathBuf {
 
 fn process_file(
     file_path: &Path,
-    cli: &Cli,
-    classifier: &Classifier,
-    config: &Config,
+    imports: &ImportCheck,
     totals: &mut Totals,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
@@ -246,8 +246,14 @@ fn process_file(
         return;
     }
 
-    if cli.fix {
-        let fixed = fix_file(file_path, &content, &block, classifier, config);
+    if imports.fix {
+        let fixed = fix_file(
+            file_path,
+            &content,
+            &block,
+            &imports.classifier,
+            &imports.config,
+        );
         if fixed == content {
             return;
         }
@@ -266,7 +272,7 @@ fn process_file(
         return;
     }
 
-    let diagnostics = check(file_path, &block, classifier, config);
+    let diagnostics = check(file_path, &block, &imports.classifier, &imports.config);
     if diagnostics.is_empty() {
         return;
     }
