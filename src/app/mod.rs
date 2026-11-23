@@ -66,7 +66,7 @@ pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
 fn run_coverage(
     base_dir: &Path,
     command: &Command,
-    measure: impl Fn(&Path) -> Result<Vec<ModuleCoverage>, String>,
+    measure: fn(&Path) -> Result<Vec<ModuleCoverage>, String>,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
 ) -> i32 {

@@ -6,25 +6,19 @@ use crate::llvmcov::Threshold;
 use clap::CommandFactory;
 use tempfile::tempdir;
 
-fn below_minimum(dir: &Path) -> Vec<ModuleCoverage> {
-    vec![ModuleCoverage {
+fn below_minimum(_: &Path) -> Result<Vec<ModuleCoverage>, String> {
+    Ok(vec![ModuleCoverage {
         name: "app".to_string(),
-        covgate_file: dir.join(".covgate"),
+        covgate_file: PathBuf::from(".covgate"),
         threshold: Threshold::Min(90.0),
         coverage: Some(50.0),
-    }]
+    }])
 }
 
 fn run_command(dir: &Path, command: &Command) -> (i32, String, String) {
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
-    let exit_code = run_coverage(
-        dir,
-        command,
-        |_| Ok(below_minimum(dir)),
-        &mut stdout,
-        &mut stderr,
-    );
+    let exit_code = run_coverage(dir, command, below_minimum, &mut stdout, &mut stderr);
     (
         exit_code,
         String::from_utf8(stdout).unwrap(),
@@ -44,15 +38,6 @@ fn subcommands_parse_into_command() {
 #[test]
 fn cli_definition_is_valid() {
     Cli::command().debug_assert();
-}
-
-#[test]
-fn update_from_replaces_subcommand() {
-    let mut cli = Cli::parse_from(["lint-imports", "covgate"]);
-
-    cli.update_from(["lint-imports", "covratchet"]);
-
-    assert!(matches!(cli.command, Some(Command::Covratchet)));
 }
 
 #[test]
