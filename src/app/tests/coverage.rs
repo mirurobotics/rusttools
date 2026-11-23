@@ -3,6 +3,7 @@ use crate::app::*;
 use crate::llvmcov::Threshold;
 
 // external crates
+use clap::CommandFactory;
 use tempfile::tempdir;
 
 fn below_minimum(dir: &Path) -> Vec<ModuleCoverage> {
@@ -38,6 +39,20 @@ fn subcommands_parse_into_command() {
 
     assert!(matches!(covgate, Some(Command::Covgate)));
     assert!(matches!(covratchet, Some(Command::Covratchet)));
+}
+
+#[test]
+fn cli_definition_is_valid() {
+    Cli::command().debug_assert();
+}
+
+#[test]
+fn update_from_replaces_subcommand() {
+    let mut cli = Cli::parse_from(["lint-imports", "covgate"]);
+
+    cli.update_from(["lint-imports", "covratchet"]);
+
+    assert!(matches!(cli.command, Some(Command::Covratchet)));
 }
 
 #[test]
