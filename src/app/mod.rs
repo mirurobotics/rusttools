@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::covgate;
 use crate::covratchet;
 use crate::fixer::fix_file;
-use crate::llvmcov::measure;
+use crate::llvmcov::{measure, ModuleCoverage};
 use crate::parser::parse;
 use crate::rules::{check_files, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
@@ -58,7 +58,7 @@ pub enum Command {
 pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     match &cli.command {
-        Some(command) => run_coverage(&base_dir, command, stdout, stderr),
+        Some(command) => run_coverage(&base_dir, command, measure, stdout, stderr),
         None => run_from_dir(&base_dir, cli, stdout, stderr),
     }
 }
@@ -66,6 +66,7 @@ pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
 fn run_coverage(
     base_dir: &Path,
     command: &Command,
+    measure: impl Fn(&Path) -> Result<Vec<ModuleCoverage>, String>,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
 ) -> i32 {
