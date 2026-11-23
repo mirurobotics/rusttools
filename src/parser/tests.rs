@@ -127,3 +127,17 @@ fn main() {}
     assert_eq!(uses[0].root_crate, "std");
     assert_eq!(block.start_line, 4);
 }
+
+#[test]
+fn parse_skips_leading_allow_marker() {
+    let content = "\
+// lint:allow(filelen)
+// standard crates
+use std::sync::Arc;
+";
+    let block = parse(content);
+    let uses = block.use_statements();
+
+    assert_eq!(uses.len(), 1);
+    assert_eq!(block.start_line, 2);
+}
