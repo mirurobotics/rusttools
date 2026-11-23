@@ -1,52 +1,31 @@
 // standard crates
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 // internal crates
-use crate::rules::fieldassert::extract::root_receiver;
+use crate::rules::{fieldassert::extract::root_receiver, Diagnostic, Input};
 
 // external crates
 use proc_macro2::{TokenStream, TokenTree};
 
-/// A single lint violation: a group of 4+ `assert_eq!` calls on fields of the
-/// same variable within a test function.
-#[allow(dead_code)]
-pub struct Violation {
-    pub file: PathBuf,
-    pub line: usize,
-    pub test_fn: String,
-    pub receiver: String,
-    pub count: usize,
-}
+const NAME: &str = "field-by-field-assert";
 
 /// Scan a source file for test functions that have too many field-by-field
 /// `assert_eq!` calls on the same receiver variable.
-pub fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Violation> {
-    let file = match syn::parse_file(source) {
-        Ok(f) => f,
-        Err(_) => return Vec::new(),
-    };
-
-    let mut violations = Vec::new();
-    collect_from_items(&file.items, path, source, threshold, &mut violations);
-    violations
+pub fn check(input: &Input) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    collect_from_items(&input.ast.items, input, &mut diagnostics);
+    diagnostics
 }
 
-fn collect_from_items(
-    items: &[syn::Item],
-    path: &Path,
-    source: &str,
-    threshold: usize,
-    violations: &mut Vec<Violation>,
-) {
+fn collect_from_items(items: &[syn::Item], input: &Input, diagnostics: &mut Vec<Diagnostic>) {
     for item in items {
         match item {
             syn::Item::Fn(item_fn) if is_test_fn(item_fn) => {
-                check_test_fn(item_fn, path, source, threshold, violations);
+                check_test_fn(item_fn, input, diagnostics);
             }
             syn::Item::Mod(item_mod) => {
                 if let Some((_, ref items)) = item_mod.content {
-                    collect_from_items(items, path, source, threshold, violations);
+                    collect_from_items(items, input, diagnostics);
                 }
             }
             _ => {}
@@ -72,16 +51,7 @@ fn is_test_fn(f: &syn::ItemFn) -> bool {
     })
 }
 
-fn check_test_fn(
-    item_fn: &syn::ItemFn,
-    path: &Path,
-    source: &str,
-    threshold: usize,
-    violations: &mut Vec<Violation>,
-) {
-    // Check for escape hatch in the raw source lines within the function span.
-    let fn_name = item_fn.sig.ident.to_string();
-
+fn check_test_fn(item_fn: &syn::ItemFn, input: &Input, diagnostics: &mut Vec<Diagnostic>) {
     // Use span to find the line range of the function in the source.
     let open_span = item_fn.block.brace_token.span.open();
     let close_span = item_fn.block.brace_token.span.close();
@@ -89,7 +59,7 @@ fn check_test_fn(
     let end_line = close_span.end().line;
 
     // Extract the source lines for this function and check for escape hatch.
-    let lines: Vec<&str> = source.lines().collect();
+    let lines: Vec<&str> = input.source.lines().collect();
     let fn_start = start_line.saturating_sub(1); // 0-indexed
     let fn_end = end_line.min(lines.len());
     for line in &lines[fn_start..fn_end] {
@@ -110,14 +80,17 @@ fn check_test_fn(
     }
 
     for (receiver, mut line_numbers) in groups {
-        if line_numbers.len() >= threshold {
+        if line_numbers.len() >= input.limits.field_assert {
             line_numbers.sort();
-            violations.push(Violation {
-                file: path.to_path_buf(),
+            diagnostics.push(Diagnostic {
+                file: input.path.to_path_buf(),
                 line: line_numbers[0],
-                test_fn: fn_name.clone(),
-                receiver,
-                count: line_numbers.len(),
+                kind: NAME,
+                message: format!(
+                    "{} assert_eq! calls on fields of `{receiver}` \u{2014} \
+                     consider constructing an expected struct",
+                    line_numbers.len()
+                ),
             });
         }
     }
@@ -227,6 +200,10 @@ mod tests {
 
     // standard crates
     use std::io::Write;
+    use std::path::Path;
+
+    // internal crates
+    use crate::rules::Limits;
 
     // external crates
     use tempfile::NamedTempFile;
@@ -236,6 +213,20 @@ mod tests {
         f.write_all(content.as_bytes()).unwrap();
         f.flush().unwrap();
         f
+    }
+
+    fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Diagnostic> {
+        let ast = syn::parse_file(source).unwrap();
+        let limits = Limits {
+            funclen: 0,
+            field_assert: threshold,
+        };
+        check(&Input {
+            path,
+            source,
+            ast: &ast,
+            limits: &limits,
+        })
     }
 
     #[test]
@@ -253,9 +244,11 @@ fn test_example() {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 4);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].receiver, "req");
-        assert_eq!(violations[0].count, 4);
-        assert_eq!(violations[0].test_fn, "test_example");
+        assert_eq!(
+            violations[0].message,
+            "4 assert_eq! calls on fields of `req` \u{2014} \
+             consider constructing an expected struct"
+        );
     }
 
     #[test]
@@ -340,7 +333,7 @@ async fn test_async_example() {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 4);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].receiver, "req");
+        assert!(violations[0].message.contains("`req`"));
     }
 
     #[test]
@@ -359,15 +352,7 @@ mod tests {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 4);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].test_fn, "test_nested");
-    }
-
-    #[test]
-    fn test_unparseable_file_skipped() {
-        let src = "this is not valid rust at all {{{";
-        let f = write_temp_file(src);
-        let violations = check_file(f.path(), src, 4);
-        assert!(violations.is_empty());
+        assert_eq!(violations[0].line, 5);
     }
 
     #[test]
@@ -382,7 +367,7 @@ fn test_example() {
         let f = write_temp_file(src);
         let violations = check_file(f.path(), src, 2);
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].count, 2);
+        assert!(violations[0].message.starts_with("2 assert_eq!"));
     }
 
     #[test]

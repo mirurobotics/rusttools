@@ -1,2 +1,4 @@
-pub mod detect;
+mod detect;
 mod extract;
+
+pub use detect::check;
