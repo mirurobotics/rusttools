@@ -164,6 +164,115 @@ fn file_ending_in_tests_rs_not_exempt() {
 }
 
 #[test]
+fn multi_line_struct_literal_counts_as_one_line() {
+    let src = "\
+fn sample() {
+    let s = S {
+        a: 1,
+        b: 2,
+    };
+    drop(s);
+}
+";
+    assert!(check(src, 2).is_empty());
+}
+
+#[test]
+fn multi_line_array_and_vec_literals_count_as_one_line() {
+    let src = "\
+fn sample() {
+    let xs = [
+        1,
+        2,
+    ];
+    let ys = vec![
+        3,
+        4,
+    ];
+}
+";
+    assert!(check(src, 2).is_empty());
+}
+
+#[test]
+fn lines_around_literal_still_counted() {
+    let src = format!(
+        "fn sample() {{\n    let xs = [\n        1,\n        2,\n    ];\n{}}}\n",
+        body(3)
+    );
+    let violations = check(&src, 3);
+    assert_eq!(violations.len(), 1);
+    assert_eq!(
+        violations[0].message,
+        "function `sample` is 4 lines (limit 3)"
+    );
+}
+
+#[test]
+fn closure_inside_literal_still_checked() {
+    let src = format!(
+        "fn outer() {{\n    let fs = [|| {{\n{}    }}];\n}}\n",
+        body(4)
+    );
+    let violations = check(&src, 3);
+    assert_eq!(violations.len(), 1);
+    assert_eq!(violations[0].message, "closure is 4 lines (limit 3)");
+}
+
+#[test]
+fn code_after_literal_on_closing_line_counted() {
+    let src = "\
+fn sample() {
+    if is_ok(S {
+        a: 1,
+    }) && ready {
+        return;
+    }
+}
+";
+    let violations = check(src, 3);
+    assert_eq!(violations.len(), 1);
+    assert_eq!(
+        violations[0].message,
+        "function `sample` is 4 lines (limit 3)"
+    );
+}
+
+#[test]
+fn punctuation_and_comment_after_literal_not_counted() {
+    let src = "\
+fn sample() {
+    g(S {
+        a: 1,
+    }); // note
+    h(&[
+        1,
+    ]);
+}
+";
+    assert!(check(src, 2).is_empty());
+}
+
+#[test]
+fn literal_starting_on_closing_line_counted() {
+    let src = "\
+fn sample() {
+    g(A {
+        x: 1,
+    }, B {
+        y: 2,
+    });
+}
+";
+    let violations = check(src, 1);
+    assert_eq!(violations.len(), 1);
+    assert_eq!(
+        violations[0].message,
+        "function `sample` is 2 lines (limit 1)"
+    );
+}
+
+#[test]
 fn suppression_on_line_above_fn() {
     let src = format!("// lint:allow(funclen)\nfn sample() {{\n{}}}\n", body(10));
     assert!(check(&src, 3).is_empty());

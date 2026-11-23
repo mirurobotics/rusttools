@@ -1,10 +1,12 @@
 // standard crates
+use std::collections::HashSet;
 use std::path::Path;
 
 // internal crates
 use crate::rules::{is_allowed_on_line_or_previous, is_code_line, Diagnostic, Input};
 
 // external crates
+use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 const NAME: &str = "funclen";
@@ -125,19 +127,60 @@ impl<'ast> Visit<'ast> for FnVisitor<'_> {
 }
 
 /// Count the non-blank, non-comment source lines strictly between the block's
-/// braces (the brace lines themselves are excluded).
+/// braces (the brace lines themselves are excluded), counting a multi-line literal as one line.
 fn count_body_lines(lines: &[&str], block: &syn::Block) -> usize {
     let open = block.brace_token.span.open().start().line;
     let close = block.brace_token.span.close().start().line;
-    if close <= open + 1 {
-        return 0;
-    }
-    lines
-        .get(open..close - 1)
-        .unwrap_or(&[])
-        .iter()
-        .filter(|line| is_code_line(line))
+    let skip = literal_tail_lines(block);
+    (open + 1..close)
+        .filter(|line| !skip.contains(line))
+        .filter(|line| lines.get(line - 1).is_some_and(|text| is_code_line(text)))
         .count()
+}
+
+fn literal_tail_lines(block: &syn::Block) -> HashSet<usize> {
+    let mut finder = LiteralFinder::default();
+    finder.visit_block(block);
+    let mut skip = HashSet::new();
+    for (first, last) in &finder.literals {
+        skip.extend(first + 1..=*last);
+    }
+    for (_, last) in &finder.literals {
+        if finder.code_starts.contains(last) {
+            skip.remove(last);
+        }
+    }
+    skip
+}
+
+#[derive(Default)]
+struct LiteralFinder {
+    literals: Vec<(usize, usize)>,
+    code_starts: HashSet<usize>,
+}
+
+impl<'ast> Visit<'ast> for LiteralFinder {
+    fn visit_expr(&mut self, node: &'ast syn::Expr) {
+        let span = node.span();
+        self.code_starts.insert(span.start().line);
+        if is_composite_literal(node) {
+            self.literals.push((span.start().line, span.end().line));
+            return;
+        }
+        syn::visit::visit_expr(self, node);
+    }
+
+    fn visit_ident(&mut self, node: &'ast syn::Ident) {
+        self.code_starts.insert(node.span().start().line);
+    }
+}
+
+fn is_composite_literal(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Struct(_) | syn::Expr::Array(_) => true,
+        syn::Expr::Macro(node) => node.mac.path.is_ident("vec"),
+        _ => false,
+    }
 }
 
 /// True for `#[cfg(test)]`, `#[cfg(feature = "test")]`, `#[cfg(any(test, ...))]`
