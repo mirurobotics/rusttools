@@ -59,7 +59,7 @@ fn measure_fails_without_covgate_files() {
 
 #[test]
 fn parse_report_reads_region_summaries() {
-    let expected = [
+    let expected = vec![
         file("/repo/src/app/mod.rs", 10, 9),
         file("/repo/src/parser/mod.rs", 4, 1),
     ];
@@ -81,7 +81,7 @@ fn parse_report_fails_without_coverage_data() {
 fn find_covgate_files_returns_sorted_covgate_paths() {
     let root = tempdir().unwrap();
     let src = root.path().join("src");
-    let expected = [
+    let expected = vec![
         write_covgate(&src, "0\n"),
         write_covgate(&src.join("a"), "90\n"),
         write_covgate(&src.join("a/nested"), "90\n"),
