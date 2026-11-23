@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::covgate;
 use crate::covratchet;
 use crate::fixer::fix_file;
+use crate::llvmcov::measure;
 use crate::parser::parse;
 use crate::rules::{check_files, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
@@ -56,10 +57,29 @@ pub enum Command {
 
 pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    match cli.command {
-        Some(Command::Covgate) => covgate::run(&base_dir, stdout, stderr),
-        Some(Command::Covratchet) => covratchet::run(&base_dir, stdout, stderr),
+    match &cli.command {
+        Some(command) => run_coverage(&base_dir, command, stdout, stderr),
         None => run_from_dir(&base_dir, cli, stdout, stderr),
+    }
+}
+
+fn run_coverage(
+    base_dir: &Path,
+    command: &Command,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) -> i32 {
+    let _ = writeln!(stdout, "Running tests with coverage instrumentation...\n");
+    let modules = match measure(base_dir) {
+        Ok(modules) => modules,
+        Err(error) => {
+            let _ = writeln!(stderr, "\nerror: {error}");
+            return 1;
+        }
+    };
+    match command {
+        Command::Covgate => covgate::run(&modules, stdout),
+        Command::Covratchet => covratchet::run(&modules, stdout, stderr),
     }
 }
 

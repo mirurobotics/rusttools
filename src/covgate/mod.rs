@@ -1,29 +1,19 @@
 // standard crates
 use std::io::Write;
-use std::path::Path;
 
 // internal crates
-use crate::llvmcov::{measure, ModuleCoverage, SRC_DIR};
+use crate::llvmcov::{ModuleCoverage, Threshold, SRC_DIR};
 
-pub fn run(root: &Path, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
-    let _ = writeln!(stdout, "Running tests with coverage instrumentation...\n");
-    let modules = match measure(root) {
-        Ok(modules) => modules,
-        Err(error) => {
-            let _ = writeln!(stderr, "\nerror: {error}");
-            return 1;
-        }
-    };
-
+pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write) -> i32 {
     let _ = writeln!(
         stdout,
         "\nChecking per-module coverage (modules discovered by .covgate under {SRC_DIR})...\n"
     );
     let mut has_failures = false;
-    for module in &modules {
+    for module in modules {
         let status = status_of(module);
-        has_failures |= matches!(status, Status::Below(_));
-        write_status(stdout, module, &status);
+        has_failures |= matches!(status, Status::Below { .. });
+        write_status(stdout, &module.name, &status);
     }
     let _ = writeln!(stdout);
 
@@ -39,28 +29,27 @@ pub fn run(root: &Path, stdout: &mut impl Write, stderr: &mut impl Write) -> i32
 }
 
 fn status_of(module: &ModuleCoverage) -> Status {
-    if module.is_skipped() {
+    let Threshold::Min(required) = module.threshold else {
         return Status::Skipped;
-    }
-    let Some(coverage) = module.coverage else {
+    };
+    let Some(actual) = module.coverage else {
         return Status::NoFiles;
     };
-    if coverage < module.threshold {
-        return Status::Below(coverage);
+    if actual < required {
+        return Status::Below { actual, required };
     }
-    Status::Meets(coverage)
+    Status::Meets { actual, required }
 }
 
-fn write_status(stdout: &mut impl Write, module: &ModuleCoverage, status: &Status) {
-    let (name, threshold) = (&module.name, module.threshold);
+fn write_status(stdout: &mut impl Write, name: &str, status: &Status) {
     let _ = match status {
         Status::Skipped => writeln!(stdout, "⏭️  {name}: skipped (threshold: 0)"),
         Status::NoFiles => writeln!(stdout, "⚠️  {name}: no source files found in coverage data"),
-        Status::Below(coverage) => {
-            writeln!(stdout, "❌ {name}: {coverage}% (requires {threshold}%)")
+        Status::Below { actual, required } => {
+            writeln!(stdout, "❌ {name}: {actual}% (requires {required}%)")
         }
-        Status::Meets(coverage) => {
-            writeln!(stdout, "✅ {name}: {coverage}% (requires {threshold}%)")
+        Status::Meets { actual, required } => {
+            writeln!(stdout, "✅ {name}: {actual}% (requires {required}%)")
         }
     };
 }
@@ -68,6 +57,6 @@ fn write_status(stdout: &mut impl Write, module: &ModuleCoverage, status: &Statu
 enum Status {
     Skipped,
     NoFiles,
-    Below(f64),
-    Meets(f64),
+    Below { actual: f64, required: f64 },
+    Meets { actual: f64, required: f64 },
 }

@@ -1,36 +1,22 @@
 // standard crates
 use std::io::Write;
-use std::path::Path;
 
 // internal crates
-use crate::llvmcov::{measure, ModuleCoverage};
+use crate::llvmcov::{write_threshold, ModuleCoverage, Threshold};
 
-pub fn run(root: &Path, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
-    let _ = writeln!(stdout, "Running tests with coverage instrumentation...\n");
-    let modules = match measure(root) {
-        Ok(modules) => modules,
-        Err(error) => {
-            let _ = writeln!(stderr, "\nerror: {error}");
-            return 1;
-        }
-    };
-
+pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let _ = writeln!(stdout, "\nUpdating .covgate files (ratchet up only)...\n");
     let mut updated = 0;
-    for module in &modules {
+    for module in modules {
         let outcome = outcome_of(module);
-        if let Outcome::Raised(coverage) = outcome {
-            if let Err(error) = std::fs::write(&module.covgate, format!("{coverage}\n")) {
-                let _ = writeln!(
-                    stderr,
-                    "error: could not write {}: {error}",
-                    module.covgate.display()
-                );
+        if let Outcome::Raised { to, .. } = outcome {
+            if let Err(error) = write_threshold(&module.covgate, to) {
+                let _ = writeln!(stderr, "error: {error}");
                 return 1;
             }
             updated += 1;
         }
-        write_outcome(stdout, module, &outcome);
+        write_outcome(stdout, &module.name, &outcome);
     }
 
     let unchanged = modules.len() - updated;
@@ -39,29 +25,31 @@ pub fn run(root: &Path, stdout: &mut impl Write, stderr: &mut impl Write) -> i32
 }
 
 fn outcome_of(module: &ModuleCoverage) -> Outcome {
-    if module.is_skipped() {
+    let Threshold::Min(threshold) = module.threshold else {
         return Outcome::Skipped;
+    };
+    let actual = module.coverage.unwrap_or(0.0);
+    if actual > threshold {
+        return Outcome::Raised {
+            from: threshold,
+            to: actual,
+        };
     }
-    let coverage = module.coverage.unwrap_or(0.0);
-    if coverage > module.threshold {
-        return Outcome::Raised(coverage);
-    }
-    Outcome::Kept(coverage)
+    Outcome::Kept { actual, threshold }
 }
 
-fn write_outcome(stdout: &mut impl Write, module: &ModuleCoverage, outcome: &Outcome) {
-    let (name, threshold) = (&module.name, module.threshold);
+fn write_outcome(stdout: &mut impl Write, name: &str, outcome: &Outcome) {
     let _ = match outcome {
         Outcome::Skipped => writeln!(stdout, "⏭️  {name}: skipped (threshold: 0)"),
-        Outcome::Raised(coverage) => writeln!(stdout, "⬆️  {name}: {threshold}% → {coverage}%"),
-        Outcome::Kept(coverage) => {
-            writeln!(stdout, "─  {name}: {coverage}% (threshold: {threshold}%)")
+        Outcome::Raised { from, to } => writeln!(stdout, "⬆️  {name}: {from}% → {to}%"),
+        Outcome::Kept { actual, threshold } => {
+            writeln!(stdout, "─  {name}: {actual}% (threshold: {threshold}%)")
         }
     };
 }
 
 enum Outcome {
     Skipped,
-    Raised(f64),
-    Kept(f64),
+    Raised { from: f64, to: f64 },
+    Kept { actual: f64, threshold: f64 },
 }
