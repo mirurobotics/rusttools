@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // internal crates
-use crate::checker::check;
+use crate::checker::{check, Diagnostic};
 use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
@@ -60,20 +60,7 @@ fn run_from_dir(
 
     // Run import checking if --path is provided.
     if cli.path.is_some() {
-        let config = load_config(base_dir, cli);
-        let classifier = Classifier::new(&config);
-
-        for file_path in &path_files {
-            process_file(
-                file_path,
-                cli,
-                &classifier,
-                &config,
-                &mut totals,
-                stdout,
-                stderr,
-            );
-        }
+        check_imports(base_dir, cli, &path_files, &mut totals, stdout, stderr);
     }
 
     let assert_files: Vec<PathBuf> = cli
@@ -102,6 +89,26 @@ fn run_from_dir(
     0
 }
 
+fn check_imports(
+    base_dir: &Path,
+    cli: &Cli,
+    files: &[PathBuf],
+    totals: &mut Totals,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) {
+    let config = load_config(base_dir, cli, stderr);
+    let imports = ImportCheck {
+        fix: cli.fix,
+        classifier: Classifier::new(&config),
+        config,
+    };
+
+    for file in files {
+        process_file(file, &imports, totals, stdout, stderr);
+    }
+}
+
 fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut impl Write) -> usize {
     let diagnostics = check_files(files, rules, limits);
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -117,18 +124,28 @@ fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut im
     diagnostics.len()
 }
 
+struct ImportCheck {
+    fix: bool,
+    classifier: Classifier,
+    config: Config,
+}
+
 #[derive(Default)]
 struct Totals {
     diagnostics: usize,
     files_fixed: usize,
 }
 
-fn load_config(base_dir: &Path, cli: &Cli) -> Config {
-    match (&cli.config, &cli.path) {
+fn load_config(base_dir: &Path, cli: &Cli, stderr: &mut impl Write) -> Config {
+    let loaded = match (&cli.config, &cli.path) {
         (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg)),
         (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path)),
-        (None, None) => Config::default(),
-    }
+        (None, None) => Ok(Config::default()),
+    };
+    loaded.unwrap_or_else(|warning| {
+        let _ = writeln!(stderr, "warning: {warning}");
+        Config::default()
+    })
 }
 
 fn rust_files(base_dir: &Path, path: &Path) -> Vec<PathBuf> {
@@ -153,9 +170,7 @@ fn resolve_input_path(base_dir: &Path, path: &Path) -> PathBuf {
 
 fn process_file(
     file_path: &Path,
-    cli: &Cli,
-    classifier: &Classifier,
-    config: &Config,
+    imports: &ImportCheck,
     totals: &mut Totals,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
@@ -177,41 +192,17 @@ fn process_file(
         return;
     }
 
-    if cli.fix {
+    let (classifier, config) = (&imports.classifier, &imports.config);
+    if imports.fix {
         let fixed = fix_file(file_path, &content, &block, classifier, config);
-        if fixed == content {
-            return;
+        if fixed != content {
+            write_fixed(file_path, &fixed, totals, stdout, stderr);
         }
-
-        if let Err(error) = std::fs::write(file_path, &fixed) {
-            let _ = writeln!(
-                stderr,
-                "error: could not write {}: {error}",
-                file_path.display()
-            );
-            return;
-        }
-
-        totals.files_fixed += 1;
-        let _ = writeln!(stdout, "fixed: {}", file_path.display());
         return;
     }
 
     let diagnostics = check(file_path, &block, classifier, config);
-    if diagnostics.is_empty() {
-        return;
-    }
-
-    for diagnostic in &diagnostics {
-        let _ = writeln!(
-            stdout,
-            "{}:{}: {} [{}]",
-            file_path.display(),
-            diagnostic.line,
-            diagnostic.message,
-            diagnostic.kind
-        );
-    }
+    report_diagnostics(file_path, &diagnostics, stdout);
     totals.diagnostics += diagnostics.len();
 }
 
@@ -237,6 +228,39 @@ fn should_skip_reexport_shell(
         .lines()
         .skip(block.end_line.saturating_sub(1))
         .all(|line| line.trim().is_empty())
+}
+
+fn write_fixed(
+    file_path: &Path,
+    fixed: &str,
+    totals: &mut Totals,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) {
+    if let Err(error) = std::fs::write(file_path, fixed) {
+        let _ = writeln!(
+            stderr,
+            "error: could not write {}: {error}",
+            file_path.display()
+        );
+        return;
+    }
+
+    totals.files_fixed += 1;
+    let _ = writeln!(stdout, "fixed: {}", file_path.display());
+}
+
+fn report_diagnostics(file_path: &Path, diagnostics: &[Diagnostic], stdout: &mut impl Write) {
+    for diagnostic in diagnostics {
+        let _ = writeln!(
+            stdout,
+            "{}:{}: {} [{}]",
+            file_path.display(),
+            diagnostic.line,
+            diagnostic.message,
+            diagnostic.kind
+        );
+    }
 }
 
 #[cfg(test)]

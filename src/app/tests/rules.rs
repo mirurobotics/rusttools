@@ -45,11 +45,9 @@ fn threshold_flags_default_to_limits_default() {
     );
 }
 
-#[test]
-fn run_assert_check_flags_field_by_field_asserts() {
-    let dir = tempdir().unwrap();
+fn write_field_asserts_test(dir: &Path) {
     fs::write(
-        dir.path().join("test.rs"),
+        dir.join("test.rs"),
         r#"
 #[test]
 fn test_example() {
@@ -62,6 +60,12 @@ fn test_example() {
 "#,
     )
     .unwrap();
+}
+
+#[test]
+fn run_assert_check_flags_field_by_field_asserts() {
+    let dir = tempdir().unwrap();
+    write_field_asserts_test(dir.path());
 
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
@@ -314,20 +318,7 @@ fn run_skips_unparseable_rs_file_and_continues() {
         "this is not valid rust at all {{{",
     )
     .unwrap();
-    fs::write(
-        dir.path().join("test.rs"),
-        r#"
-#[test]
-fn test_example() {
-    let req = get_request();
-    assert_eq!(req.call, Call::GetDeployment);
-    assert_eq!(req.method, Method::GET);
-    assert_eq!(req.path, "/deployments");
-    assert_eq!(req.url, "http://mock/deployments");
-}
-"#,
-    )
-    .unwrap();
+    write_field_asserts_test(dir.path());
 
     let mut stdout = Vec::new();
     let mut stderr = Vec::new();
