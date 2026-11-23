@@ -27,6 +27,15 @@ fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
     })
 }
 
+fn count_lines(source: &str) -> usize {
+    let ast = syn::parse_file(source).unwrap();
+    let syn::Item::Fn(item) = &ast.items[0] else {
+        panic!("expected a function");
+    };
+    let lines: Vec<&str> = source.lines().collect();
+    count_body_lines(&lines, &item.block)
+}
+
 #[test]
 fn under_limit_no_violation() {
     assert!(check(&src_fn(2), 3).is_empty());
@@ -143,7 +152,7 @@ fn sample() {
     drop(s);
 }
 ";
-    assert!(check(src, 2).is_empty());
+    assert_eq!(count_lines(src), 2);
 }
 
 #[test]
@@ -160,7 +169,68 @@ fn sample() {
     ];
 }
 ";
-    assert!(check(src, 2).is_empty());
+    assert_eq!(count_lines(src), 2);
+    assert_eq!(
+        check(src, 1)[0].message,
+        "function `sample` is 2 lines (limit 1)"
+    );
+}
+
+#[test]
+fn vec_repeat_collapses_and_other_macros_count_every_line() {
+    let src = "\
+fn sample() {
+    let zs = vec![
+        0;
+        3
+    ];
+    let s = format!(
+        \"{}\",
+        1
+    );
+}
+";
+    assert_eq!(count_lines(src), 5);
+}
+
+#[test]
+fn unparseable_vec_counts_every_line() {
+    let src = "fn sample() {\n    let ys = vec![\n        1 2,\n    ];\n}\n";
+    assert_eq!(count_lines(src), 3);
+}
+
+#[test]
+fn block_expressions_inside_literal_counted() {
+    let src = "\
+fn sample() {
+    let d = D {
+        kind: match k {
+            1 => \"a\",
+            _ => \"b\",
+        },
+        n: loop {
+            break 1;
+        },
+    };
+}
+";
+    assert_eq!(
+        check(src, 8)[0].message,
+        "function `sample` is 9 lines (limit 8)"
+    );
+}
+
+#[test]
+fn closure_inside_vec_counted() {
+    let src = "\
+fn sample() {
+    let fs = vec![|| {
+        let x = 1;
+        let y = 2;
+    }];
+}
+";
+    assert_eq!(count_lines(src), 4);
 }
 
 #[test]
@@ -169,12 +239,7 @@ fn lines_around_literal_still_counted() {
         "fn sample() {{\n    let xs = [\n        1,\n        2,\n    ];\n{}}}\n",
         body(3)
     );
-    let violations = check(&src, 3);
-    assert_eq!(violations.len(), 1);
-    assert_eq!(
-        violations[0].message,
-        "function `sample` is 4 lines (limit 3)"
-    );
+    assert_eq!(count_lines(&src), 4);
 }
 
 #[test]
@@ -184,8 +249,8 @@ fn closure_inside_literal_still_checked() {
         body(4)
     );
     let violations = check(&src, 3);
-    assert_eq!(violations.len(), 1);
-    assert_eq!(violations[0].message, "closure is 4 lines (limit 3)");
+    assert_eq!(violations.len(), 2);
+    assert_eq!(violations[1].message, "closure is 4 lines (limit 3)");
 }
 
 #[test]
@@ -199,12 +264,14 @@ fn sample() {
     }
 }
 ";
-    let violations = check(src, 3);
-    assert_eq!(violations.len(), 1);
-    assert_eq!(
-        violations[0].message,
-        "function `sample` is 4 lines (limit 3)"
-    );
+    assert_eq!(count_lines(src), 4);
+}
+
+#[test]
+fn method_or_let_after_literal_on_closing_line_counted() {
+    let method = "fn sample() {\n    let s = S {\n        a: 1,\n    }.build();\n}\n";
+    let binding = "fn sample() {\n    let x = S {\n        a: 1,\n    }; let y;\n}\n";
+    assert_eq!((count_lines(method), count_lines(binding)), (2, 2));
 }
 
 #[test]
@@ -219,7 +286,7 @@ fn sample() {
     ]);
 }
 ";
-    assert!(check(src, 2).is_empty());
+    assert_eq!(count_lines(src), 2);
 }
 
 #[test]
@@ -233,12 +300,7 @@ fn sample() {
     });
 }
 ";
-    let violations = check(src, 1);
-    assert_eq!(violations.len(), 1);
-    assert_eq!(
-        violations[0].message,
-        "function `sample` is 2 lines (limit 1)"
-    );
+    assert_eq!(count_lines(src), 2);
 }
 
 #[test]
