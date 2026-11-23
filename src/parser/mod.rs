@@ -1,3 +1,6 @@
+// internal crates
+use crate::rules::ALLOW_MARKER;
+
 /// A single `use` statement (possibly spanning multiple lines).
 #[derive(Debug, Clone)]
 pub struct UseStatement {
@@ -218,7 +221,7 @@ fn is_module_declaration(trimmed: &str) -> bool {
 }
 
 fn is_allow_marker(trimmed: &str) -> bool {
-    trimmed.starts_with("// lint:allow(")
+    trimmed.starts_with("//") && trimmed.contains(ALLOW_MARKER)
 }
 
 /// Check if a comment line looks like a group header.

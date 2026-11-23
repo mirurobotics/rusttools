@@ -12,6 +12,8 @@ const DEFAULT_FIELD_ASSERT: usize = 4;
 const DEFAULT_FUNCLEN: usize = 50;
 const DEFAULT_FILELEN: usize = 300;
 
+pub const ALLOW_MARKER: &str = "lint:allow(";
+
 #[derive(Args)]
 pub struct Limits {
     /// Minimum field-asserts on the same receiver to flag (default: 4)
@@ -75,7 +77,7 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
 }
 
 pub fn has_allow_marker(line: &str, rule: &str) -> bool {
-    line.contains(&format!("lint:allow({rule})"))
+    line.contains(&format!("{ALLOW_MARKER}{rule})"))
 }
 
 pub fn is_code_line(line: &str) -> bool {
