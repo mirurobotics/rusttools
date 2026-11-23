@@ -10,6 +10,7 @@ use clap::Args;
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
 const DEFAULT_FUNCLEN: usize = 50;
+const DEFAULT_FILELEN: usize = 300;
 
 #[derive(Args)]
 pub struct Limits {
@@ -32,7 +33,7 @@ pub struct Limits {
     #[arg(
         long = "filelen-threshold",
         value_name = "FILELEN_THRESHOLD",
-        default_value_t = 300,
+        default_value_t = DEFAULT_FILELEN,
         help = "Max non-blank, non-comment lines per file (0 disables)"
     )]
     pub filelen: usize,
@@ -43,6 +44,7 @@ impl Default for Limits {
         Self {
             field_assert: DEFAULT_FIELD_ASSERT,
             funclen: DEFAULT_FUNCLEN,
+            filelen: DEFAULT_FILELEN,
         }
     }
 }
