@@ -8,7 +8,7 @@ use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
 use crate::parser::parse;
-use crate::rules::{check as check_rules, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
+use crate::rules::{check_files, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
 // external crates
 use clap::Parser as ClapParser;
@@ -112,7 +112,7 @@ fn run_from_dir(
 }
 
 fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut impl Write) -> usize {
-    let diagnostics = check_rules(files, rules, limits);
+    let diagnostics = check_files(files, rules, limits);
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     for diagnostic in &diagnostics {
         let file = &diagnostic.file;

@@ -13,7 +13,7 @@ pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
 
 pub const PATH_RULES: &[Rule] = &[funclen::check];
 
-pub fn check(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
+pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for path in files {
         let Ok(source) = std::fs::read_to_string(path) else {
