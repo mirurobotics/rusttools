@@ -25,25 +25,25 @@ pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write, stderr: &mut imp
 }
 
 fn outcome_of(module: &ModuleCoverage) -> Outcome {
-    let Threshold::Min(threshold) = module.threshold else {
+    let Threshold::Min(minimum) = module.threshold else {
         return Outcome::Skipped;
     };
     let actual = module.coverage.unwrap_or(0.0);
-    if actual > threshold {
+    if actual > minimum {
         return Outcome::Raised {
-            from: threshold,
+            from: minimum,
             to: actual,
         };
     }
-    Outcome::Kept { actual, threshold }
+    Outcome::Kept { actual, minimum }
 }
 
 fn write_outcome(stdout: &mut impl Write, name: &str, outcome: &Outcome) {
     let _ = match outcome {
         Outcome::Skipped => writeln!(stdout, "⏭️  {name}: skipped (threshold: 0)"),
         Outcome::Raised { from, to } => writeln!(stdout, "⬆️  {name}: {from}% → {to}%"),
-        Outcome::Kept { actual, threshold } => {
-            writeln!(stdout, "─  {name}: {actual}% (threshold: {threshold}%)")
+        Outcome::Kept { actual, minimum } => {
+            writeln!(stdout, "─  {name}: {actual}% (threshold: {minimum}%)")
         }
     };
 }
@@ -51,5 +51,5 @@ fn write_outcome(stdout: &mut impl Write, name: &str, outcome: &Outcome) {
 enum Outcome {
     Skipped,
     Raised { from: f64, to: f64 },
-    Kept { actual: f64, threshold: f64 },
+    Kept { actual: f64, minimum: f64 },
 }

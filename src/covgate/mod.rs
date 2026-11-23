@@ -29,27 +29,27 @@ pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write) -> i32 {
 }
 
 fn status_of(module: &ModuleCoverage) -> Status {
-    let Threshold::Min(required) = module.threshold else {
+    let Threshold::Min(minimum) = module.threshold else {
         return Status::Skipped;
     };
     let Some(actual) = module.coverage else {
         return Status::NoFiles;
     };
-    if actual < required {
-        return Status::Below { actual, required };
+    if actual < minimum {
+        return Status::Below { actual, minimum };
     }
-    Status::Meets { actual, required }
+    Status::Meets { actual, minimum }
 }
 
 fn write_status(stdout: &mut impl Write, name: &str, status: &Status) {
     let _ = match status {
         Status::Skipped => writeln!(stdout, "⏭️  {name}: skipped (threshold: 0)"),
         Status::NoFiles => writeln!(stdout, "⚠️  {name}: no source files found in coverage data"),
-        Status::Below { actual, required } => {
-            writeln!(stdout, "❌ {name}: {actual}% (requires {required}%)")
+        Status::Below { actual, minimum } => {
+            writeln!(stdout, "❌ {name}: {actual}% (requires {minimum}%)")
         }
-        Status::Meets { actual, required } => {
-            writeln!(stdout, "✅ {name}: {actual}% (requires {required}%)")
+        Status::Meets { actual, minimum } => {
+            writeln!(stdout, "✅ {name}: {actual}% (requires {minimum}%)")
         }
     };
 }
@@ -57,6 +57,6 @@ fn write_status(stdout: &mut impl Write, name: &str, status: &Status) {
 enum Status {
     Skipped,
     NoFiles,
-    Below { actual: f64, required: f64 },
-    Meets { actual: f64, required: f64 },
+    Below { actual: f64, minimum: f64 },
+    Meets { actual: f64, minimum: f64 },
 }

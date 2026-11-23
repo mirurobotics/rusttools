@@ -115,17 +115,17 @@ fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
     let content = std::fs::read_to_string(covgate_file)
         .map_err(|e| format!("could not read {}: {e}", covgate_file.display()))?;
     let first_line = content.lines().next().unwrap_or_default().trim();
-    let min = first_line
+    let minimum = first_line
         .parse::<f64>()
         .map_err(|e| format!("could not parse {}: {e}", covgate_file.display()))?;
-    if min == 0.0 {
+    if minimum == 0.0 {
         return Ok(Threshold::Skip);
     }
-    Ok(Threshold::Min(min))
+    Ok(Threshold::Min(minimum))
 }
 
-pub fn write_threshold(covgate_file: &Path, min: f64) -> Result<(), String> {
-    std::fs::write(covgate_file, format!("{min}\n"))
+pub fn write_threshold(covgate_file: &Path, minimum: f64) -> Result<(), String> {
+    std::fs::write(covgate_file, format!("{minimum}\n"))
         .map_err(|e| format!("could not write {}: {e}", covgate_file.display()))
 }
 
