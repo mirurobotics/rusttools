@@ -20,7 +20,7 @@ use walkdir::WalkDir;
 #[derive(ClapParser)]
 #[command(
     name = "lint",
-    about = "Lint Rust import grouping, ordering, comment headers, and test assert patterns",
+    about = "Lint Rust imports, comment headers and test asserts, and gate per-module coverage",
     args_conflicts_with_subcommands = true
 )]
 pub struct Cli {

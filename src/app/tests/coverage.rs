@@ -59,7 +59,7 @@ fn run_coverage_fails_without_covgate_files() {
         "Running tests with coverage instrumentation...\n\n",
         String::from_utf8(stdout).unwrap()
     );
-    assert!(!stderr.is_empty());
+    assert!(String::from_utf8(stderr).unwrap().contains("no .covgate files"));
 }
 
 #[test]

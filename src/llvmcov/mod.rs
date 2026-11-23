@@ -29,11 +29,45 @@ pub fn measure(root: &Path) -> Result<Vec<ModuleCoverage>, String> {
     if covgate_files.is_empty() {
         return Err(format!("no {COVGATE_FILE} files under {}", src.display()));
     }
+    let thresholds = covgate_files
+        .iter()
+        .map(PathBuf::as_path)
+        .map(read_threshold)
+        .collect::<Result<Vec<_>, _>>()?;
     let files = run_llvm_cov(root)?;
-    covgate_files
+    let modules: Vec<ModuleCoverage> = covgate_files
         .into_iter()
-        .map(|covgate_file| read_module(&src, covgate_file, &files))
-        .collect()
+        .zip(thresholds)
+        .map(|(covgate_file, threshold)| read_module(&src, covgate_file, threshold, &files))
+        .collect();
+    Ok(modules)
+}
+
+fn find_covgate_files(src: &Path) -> Vec<PathBuf> {
+    let mut covgate_files: Vec<PathBuf> = WalkDir::new(src)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_type().is_file() && entry.file_name() == COVGATE_FILE)
+        .map(|entry| entry.into_path())
+        .collect();
+    covgate_files.sort();
+    covgate_files
+}
+
+fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
+    let content = std::fs::read_to_string(covgate_file)
+        .map_err(|e| format!("could not read {}: {e}", covgate_file.display()))?;
+    let first_line = content.lines().next().unwrap_or_default().trim();
+    let minimum = first_line
+        .parse::<f64>()
+        .map_err(|e| format!("could not parse {}: {e}", covgate_file.display()))?;
+    if !(0.0..=100.0).contains(&minimum) {
+        return Err(format!("{} must be between 0 and 100", covgate_file.display()));
+    }
+    if minimum == 0.0 {
+        return Ok(Threshold::Skip);
+    }
+    Ok(Threshold::Min(minimum))
 }
 
 fn run_llvm_cov(root: &Path) -> Result<Vec<FileCoverage>, String> {
@@ -44,7 +78,7 @@ fn run_llvm_cov(root: &Path) -> Result<Vec<FileCoverage>, String> {
         .output()
         .map_err(|e| format!("could not run cargo llvm-cov: {e}"))?;
     if !output.status.success() {
-        return Err(format!("tests failed ({})", output.status));
+        return Err(format!("cargo llvm-cov failed ({})", output.status));
     }
     parse_report(&output.stdout)
 }
@@ -60,32 +94,19 @@ fn parse_report(json: &[u8]) -> Result<Vec<FileCoverage>, String> {
         .ok_or_else(|| "cargo llvm-cov output has no coverage data".to_string())
 }
 
-fn find_covgate_files(src: &Path) -> Vec<PathBuf> {
-    let mut covgate_files: Vec<PathBuf> = WalkDir::new(src)
-        .into_iter()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().is_file() && entry.file_name() == COVGATE_FILE)
-        .map(|entry| entry.into_path())
-        .collect();
-    covgate_files.sort();
-    covgate_files
-}
-
 fn read_module(
     src: &Path,
     covgate_file: PathBuf,
+    threshold: Threshold,
     files: &[FileCoverage],
-) -> Result<ModuleCoverage, String> {
+) -> ModuleCoverage {
     let dir = covgate_file.parent().unwrap_or(src);
-    let name = display_name(src, dir);
-    let coverage = coverage_under(dir, files);
-    let threshold = read_threshold(&covgate_file)?;
-    Ok(ModuleCoverage {
-        name,
+    ModuleCoverage {
+        name: display_name(src, dir),
+        coverage: coverage_under(dir, files),
         covgate_file,
         threshold,
-        coverage,
-    })
+    }
 }
 
 fn display_name(src: &Path, dir: &Path) -> String {
@@ -111,22 +132,6 @@ fn coverage_under(dir: &Path, files: &[FileCoverage]) -> Option<f64> {
         return Some(0.0);
     }
     Some((covered * 10000 / count) as f64 / 100.0)
-}
-
-fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
-    let content = std::fs::read_to_string(covgate_file)
-        .map_err(|e| format!("could not read {}: {e}", covgate_file.display()))?;
-    let first_line = content.lines().next().unwrap_or_default().trim();
-    let minimum = first_line
-        .parse::<f64>()
-        .map_err(|e| format!("could not parse {}: {e}", covgate_file.display()))?;
-    if !(0.0..=100.0).contains(&minimum) {
-        return Err(format!("{} must be between 0 and 100", covgate_file.display()));
-    }
-    if minimum == 0.0 {
-        return Ok(Threshold::Skip);
-    }
-    Ok(Threshold::Min(minimum))
 }
 
 pub fn write_threshold(covgate_file: &Path, minimum: f64) -> Result<(), String> {

@@ -39,8 +39,8 @@ fn run_passes_module_at_its_minimum() {
 #[test]
 fn run_fails_when_any_module_is_below_its_minimum() {
     let modules = [
-        module(Threshold::Min(90.0), Some(95.0)),
         module(Threshold::Min(90.0), Some(89.99)),
+        module(Threshold::Min(90.0), Some(95.0)),
     ];
 
     let (exit_code, stdout) = check(&modules);

@@ -54,7 +54,19 @@ fn measure_fails_without_covgate_files() {
     fs::create_dir_all(root.path().join("src/app")).unwrap();
     fs::write(root.path().join("src/app/mod.rs"), "fn main() {}\n").unwrap();
 
-    assert!(measure(root.path()).is_err());
+    let error = measure(root.path()).unwrap_err();
+
+    assert!(error.contains("no .covgate files"), "{error}");
+}
+
+#[test]
+fn measure_fails_on_invalid_threshold_before_running_tests() {
+    let root = tempdir().unwrap();
+    write_covgate(&root.path().join("src/app"), "abc\n");
+
+    let error = measure(root.path()).unwrap_err();
+
+    assert!(error.contains("could not parse"), "{error}");
 }
 
 #[test]
@@ -97,7 +109,7 @@ fn find_covgate_files_returns_sorted_covgate_paths() {
 fn read_module_measures_its_directory() {
     let root = tempdir().unwrap();
     let src = root.path().join("src");
-    let covgate_file = write_covgate(&src.join("app"), "90\n");
+    let covgate_file = src.join("app/.covgate");
     let files = [
         file(&src.join("app/mod.rs").display().to_string(), 10, 9),
         file(&src.join("parser/mod.rs").display().to_string(), 10, 0),
@@ -109,7 +121,7 @@ fn read_module_measures_its_directory() {
         coverage: Some(90.0),
     };
 
-    let module = read_module(&src, covgate_file, &files).unwrap();
+    let module = read_module(&src, covgate_file, Threshold::Min(90.0), &files);
 
     assert_eq!(expected, module);
 }
