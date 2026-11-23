@@ -135,6 +135,12 @@ fn bare_extra_slashes_line_ends_todo() {
 }
 
 #[test]
+fn extra_slashes_continuation_line_allowed() {
+    let source = "// TODO: a\n//// See https://a.io/1\n";
+    assert!(lines(source).is_empty());
+}
+
+#[test]
 fn words_starting_with_marker_not_flagged() {
     let source = "// TODOS are tracked.\n// TODO_LIST is a name.\n// FIXMEs are fine.\n";
     assert!(lines(source).is_empty());
