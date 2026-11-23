@@ -5,22 +5,6 @@ const NAME: &str = "todoissue";
 const MARKERS: [&str; 2] = ["TODO", "FIXME"];
 const MESSAGE: &str = "comment must include an issue link (an http or https URL)";
 
-pub fn check(input: &Input) -> Vec<Diagnostic> {
-    let lines: Vec<(usize, &str)> = input.source.lines().enumerate().collect();
-    lines
-        .split(|(_, line)| comment_style(line).is_none())
-        .flat_map(|group| group.chunk_by(is_same_style))
-        .filter(|group| !is_suppressed(group))
-        .flat_map(unlinked_markers)
-        .map(|(index, marker)| Diagnostic {
-            file: input.path.to_path_buf(),
-            line: index + 1,
-            kind: NAME,
-            message: format!("{marker} {MESSAGE}"),
-        })
-        .collect()
-}
-
 #[derive(PartialEq)]
 enum CommentStyle {
     Line,
@@ -28,34 +12,65 @@ enum CommentStyle {
     InnerDoc,
 }
 
-fn comment_style(line: &str) -> Option<CommentStyle> {
+struct Comment<'a> {
+    line: usize,
+    style: CommentStyle,
+    text: &'a str,
+}
+
+pub fn check(input: &Input) -> Vec<Diagnostic> {
+    let comments: Vec<Comment> = input
+        .source
+        .lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            let (style, text) = parse_comment(line)?;
+            Some(Comment {
+                line: index + 1,
+                style,
+                text,
+            })
+        })
+        .collect();
+    comments
+        .chunk_by(|a, b| a.style == b.style && a.line + 1 == b.line)
+        .filter(|group| !is_suppressed(group))
+        .flat_map(unlinked_markers)
+        .map(|(line, marker)| Diagnostic {
+            file: input.path.to_path_buf(),
+            line,
+            kind: NAME,
+            message: format!("{marker} {MESSAGE}"),
+        })
+        .collect()
+}
+
+fn parse_comment(line: &str) -> Option<(CommentStyle, &str)> {
     let body = line.trim_start().strip_prefix("//")?;
-    if body.starts_with('!') {
-        return Some(CommentStyle::InnerDoc);
+    if let Some(text) = body.strip_prefix('!') {
+        return Some((CommentStyle::InnerDoc, text));
     }
-    if body.starts_with('/') && !body.starts_with("//") {
-        return Some(CommentStyle::OuterDoc);
+    match body.strip_prefix('/') {
+        Some(text) if !text.starts_with('/') => Some((CommentStyle::OuterDoc, text)),
+        _ => Some((CommentStyle::Line, body)),
     }
-    Some(CommentStyle::Line)
 }
 
-fn is_same_style(a: &(usize, &str), b: &(usize, &str)) -> bool {
-    comment_style(a.1) == comment_style(b.1)
+fn is_suppressed(group: &[Comment]) -> bool {
+    group
+        .iter()
+        .any(|comment| has_allow_marker(comment.text, NAME))
 }
 
-fn is_suppressed(group: &[(usize, &str)]) -> bool {
-    group.iter().any(|(_, line)| has_allow_marker(line, NAME))
-}
-
-fn unlinked_markers(group: &[(usize, &str)]) -> Vec<(usize, &'static str)> {
+fn unlinked_markers(group: &[Comment]) -> Vec<(usize, &'static str)> {
     let mut unlinked = Vec::new();
     let mut open = None;
-    for &(index, line) in group {
-        let text = line.trim_start_matches(is_comment_prefix);
+    for comment in group {
+        let text = comment.text.trim_start_matches(is_bullet_or_space);
         let marker = todo_marker(text);
         if text.is_empty() || marker.is_some() {
             unlinked.extend(open.take());
-            open = marker.map(|marker| (index, marker));
+            open = marker.map(|marker| (comment.line, marker));
         }
         if has_link(text) {
             open = None;
@@ -65,8 +80,8 @@ fn unlinked_markers(group: &[(usize, &str)]) -> Vec<(usize, &'static str)> {
     unlinked
 }
 
-fn is_comment_prefix(c: char) -> bool {
-    matches!(c, '/' | '!' | '*' | '-') || c.is_whitespace()
+fn is_bullet_or_space(c: char) -> bool {
+    matches!(c, '*' | '-') || c.is_whitespace()
 }
 
 fn todo_marker(text: &str) -> Option<&'static str> {
