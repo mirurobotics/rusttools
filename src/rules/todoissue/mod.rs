@@ -52,7 +52,7 @@ fn parse_comment(line: &str) -> Option<(CommentStyle, &str)> {
     }
     match body.strip_prefix('/') {
         Some(text) if !text.starts_with('/') => Some((CommentStyle::OuterDoc, text)),
-        _ => Some((CommentStyle::Line, body)),
+        _ => Some((CommentStyle::Line, body.trim_start_matches('/'))),
     }
 }
 

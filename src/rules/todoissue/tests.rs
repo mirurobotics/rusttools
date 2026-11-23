@@ -124,6 +124,17 @@ fn inner_doc_continuation_line_allowed() {
 }
 
 #[test]
+fn extra_slashes_comment_reported() {
+    assert_eq!(lines("//// TODO: fix\n"), vec![1]);
+}
+
+#[test]
+fn bare_extra_slashes_line_ends_todo() {
+    let source = "// TODO: a\n////\n// See https://a.io/1\n";
+    assert_eq!(lines(source), vec![1]);
+}
+
+#[test]
 fn words_starting_with_marker_not_flagged() {
     let source = "// TODOS are tracked.\n// TODO_LIST is a name.\n// FIXMEs are fine.\n";
     assert!(lines(source).is_empty());
