@@ -8,7 +8,8 @@ const MESSAGE: &str = "comment must include an issue link (an http or https URL)
 pub fn check(input: &Input) -> Vec<Diagnostic> {
     let lines: Vec<(usize, &str)> = input.source.lines().enumerate().collect();
     lines
-        .split(|(_, line)| !line.trim_start().starts_with("//"))
+        .split(|(_, line)| comment_style(line).is_none())
+        .flat_map(|group| group.chunk_by(is_same_style))
         .filter(|group| !is_suppressed(group))
         .flat_map(unlinked_markers)
         .map(|(index, marker)| Diagnostic {
@@ -18,6 +19,28 @@ pub fn check(input: &Input) -> Vec<Diagnostic> {
             message: format!("{marker} {MESSAGE}"),
         })
         .collect()
+}
+
+#[derive(PartialEq)]
+enum CommentStyle {
+    Line,
+    OuterDoc,
+    InnerDoc,
+}
+
+fn comment_style(line: &str) -> Option<CommentStyle> {
+    let body = line.trim_start().strip_prefix("//")?;
+    if body.starts_with('!') {
+        return Some(CommentStyle::InnerDoc);
+    }
+    if body.starts_with('/') && !body.starts_with("//") {
+        return Some(CommentStyle::OuterDoc);
+    }
+    Some(CommentStyle::Line)
+}
+
+fn is_same_style(a: &(usize, &str), b: &(usize, &str)) -> bool {
+    comment_style(a.1) == comment_style(b.1)
 }
 
 fn is_suppressed(group: &[(usize, &str)]) -> bool {

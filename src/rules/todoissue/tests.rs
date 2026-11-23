@@ -47,6 +47,11 @@ fn fixme_without_link_names_fixme() {
 }
 
 #[test]
+fn todo_with_owner_reported() {
+    assert_eq!(lines("// TODO(ben): fix\n"), vec![1]);
+}
+
+#[test]
 fn link_on_same_line_allowed() {
     let source = "// TODO: fix https://github.com/org/repo/issues/1\n";
     assert!(lines(source).is_empty());
@@ -91,6 +96,18 @@ fn empty_comment_line_ends_todo() {
 #[test]
 fn code_line_ends_comment_group() {
     let source = "// TODO: fix\nfn f() {}\n// See https://a.io/6.\n";
+    assert_eq!(lines(source), vec![1]);
+}
+
+#[test]
+fn blank_line_ends_comment_group() {
+    let source = "// lint:allow(todoissue)\n\n// TODO: fix\n";
+    assert_eq!(lines(source), vec![3]);
+}
+
+#[test]
+fn comment_style_change_ends_comment_group() {
+    let source = "// TODO: fix\n/// Wraps https://docs.rs/foo.\nfn f() {}\n";
     assert_eq!(lines(source), vec![1]);
 }
 
