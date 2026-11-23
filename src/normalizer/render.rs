@@ -94,20 +94,7 @@ fn render_child_entries(segment: &str, node: &ImportNode) -> Vec<String> {
         }
     }
 
-    let mut parts = Vec::new();
-    if node.self_import {
-        parts.push("self".to_string());
-    }
-    for alias in &node.renames {
-        parts.push(format!("self as {alias}"));
-    }
-    if node.glob {
-        parts.push("*".to_string());
-    }
-    for (child_segment, child) in &node.children {
-        parts.extend(render_child_entries(child_segment, child));
-    }
-
+    let parts = render_group_parts(node);
     vec![format!("{segment}::{{{}}}", parts.join(", "))]
 }
 
