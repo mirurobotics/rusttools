@@ -212,6 +212,24 @@ fn run_filelen_check_reports_file_over_default_limit() {
 }
 
 #[test]
+fn run_filelen_check_skips_assert_paths() {
+    let dir = tempdir().unwrap();
+    let source = "const _: u8 = 0;\n".repeat(301);
+    fs::write(dir.path().join("long.rs"), source).unwrap();
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(
+        &assert_cli(vec![dir.path().to_path_buf()]),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit_code, 0);
+    assert!(stdout.is_empty());
+}
+
+#[test]
 fn run_skips_unparseable_rs_file_and_continues() {
     let dir = tempdir().unwrap();
     fs::write(

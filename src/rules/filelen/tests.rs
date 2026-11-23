@@ -78,6 +78,12 @@ fn tests_path_checked() {
 }
 
 #[test]
+fn tests_rs_file_checked() {
+    let violations = check_file(Path::new("src/checker/tests.rs"), &code(4), 3);
+    assert_eq!(violations.len(), 1);
+}
+
+#[test]
 fn suppression_on_first_line() {
     let src = format!("// lint:allow(filelen)\n{}", code(10));
     assert!(check(&src, 3).is_empty());
