@@ -40,13 +40,17 @@ fn run_passes_module_at_its_minimum() {
 fn run_fails_when_any_module_is_below_its_minimum() {
     let modules = [
         module(Threshold::Min(90.0), Some(89.99)),
-        module(Threshold::Min(90.0), Some(95.0)),
+        ModuleCoverage {
+            name: "parser".to_string(),
+            ..module(Threshold::Min(90.0), Some(95.0))
+        },
     ];
 
     let (exit_code, stdout) = check(&modules);
 
     assert_eq!(1, exit_code);
     assert!(stdout.contains("❌ app: 89.99% (requires 90%)"));
+    assert!(stdout.contains("✅ parser: 95% (requires 90%)"));
     assert!(stdout.contains("ERROR: One or more modules are below"));
 }
 

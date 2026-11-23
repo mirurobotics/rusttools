@@ -116,7 +116,7 @@ fn find_covgate_files_returns_sorted_covgate_paths() {
 }
 
 #[test]
-fn read_module_measures_its_directory() {
+fn module_coverage_measures_its_directory() {
     let root = tempdir().unwrap();
     let src = root.path().join("src");
     let covgate_file = src.join("app/.covgate");
@@ -131,7 +131,7 @@ fn read_module_measures_its_directory() {
         coverage: Some(90.0),
     };
 
-    let module = read_module(&src, covgate_file, Threshold::Min(90.0), &files);
+    let module = module_coverage(&src, covgate_file, Threshold::Min(90.0), &files);
 
     assert_eq!(expected, module);
 }

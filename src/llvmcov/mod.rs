@@ -30,15 +30,13 @@ pub fn measure(root: &Path) -> Result<Vec<ModuleCoverage>, String> {
         return Err(format!("no {COVGATE_FILE} files under {}", src.display()));
     }
     let thresholds = covgate_files
-        .iter()
-        .map(PathBuf::as_path)
-        .map(read_threshold)
+        .into_iter()
+        .map(|path| read_threshold(&path).map(|threshold| (path, threshold)))
         .collect::<Result<Vec<_>, _>>()?;
     let files = run_llvm_cov(root)?;
-    let modules: Vec<ModuleCoverage> = covgate_files
+    let modules: Vec<ModuleCoverage> = thresholds
         .into_iter()
-        .zip(thresholds)
-        .map(|(covgate_file, threshold)| read_module(&src, covgate_file, threshold, &files))
+        .map(|(path, threshold)| module_coverage(&src, path, threshold, &files))
         .collect();
     Ok(modules)
 }
@@ -98,7 +96,7 @@ fn parse_report(json: &[u8]) -> Result<Vec<FileCoverage>, String> {
         .ok_or_else(|| "cargo llvm-cov output has no coverage data".to_string())
 }
 
-fn read_module(
+fn module_coverage(
     src: &Path,
     covgate_file: PathBuf,
     threshold: Threshold,
