@@ -61,7 +61,7 @@ pub fn parse(content: &str) -> ImportBlock {
     let mut pending_attrs: Vec<String> = Vec::new();
     let start_line = i + 1;
 
-    while let Some(next) = parse_line(&lines, i, &mut items, &mut pending_attrs) {
+    while let Some(next) = parse_block_item(&lines, i, &mut items, &mut pending_attrs) {
         i = next;
     }
 
@@ -80,7 +80,7 @@ pub fn parse(content: &str) -> ImportBlock {
     }
 }
 
-fn parse_line(
+fn parse_block_item(
     lines: &[&str],
     i: usize,
     items: &mut Vec<ImportBlockItem>,
