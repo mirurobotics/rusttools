@@ -5,8 +5,8 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 echo "Lint"
 echo "===="
-"$REPO_ROOT/tools/lint/scripts/lint.sh"
+"$REPO_ROOT/scripts/lint.sh"
 
 echo "Test"
 echo "===="
-"$REPO_ROOT/tools/lint/scripts/covgate.sh"
+"$REPO_ROOT/scripts/covgate.sh"
