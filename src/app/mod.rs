@@ -60,19 +60,15 @@ fn run_from_dir(
 
     // Run import checking if --path is provided.
     if cli.path.is_some() {
-        let config = load_config(base_dir, cli);
-        let classifier = Classifier::new(&config);
+        let config = load_config(base_dir, cli, stderr);
+        let imports = ImportCheck {
+            fix: cli.fix,
+            classifier: Classifier::new(&config),
+            config,
+        };
 
         for file_path in &path_files {
-            process_file(
-                file_path,
-                cli,
-                &classifier,
-                &config,
-                &mut totals,
-                stdout,
-                stderr,
-            );
+            process_file(file_path, &imports, &mut totals, stdout, stderr);
         }
     }
 
@@ -117,18 +113,28 @@ fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut im
     diagnostics.len()
 }
 
+struct ImportCheck {
+    fix: bool,
+    classifier: Classifier,
+    config: Config,
+}
+
 #[derive(Default)]
 struct Totals {
     diagnostics: usize,
     files_fixed: usize,
 }
 
-fn load_config(base_dir: &Path, cli: &Cli) -> Config {
-    match (&cli.config, &cli.path) {
+fn load_config(base_dir: &Path, cli: &Cli, stderr: &mut impl Write) -> Config {
+    let loaded = match (&cli.config, &cli.path) {
         (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg)),
         (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path)),
-        (None, None) => Config::default(),
-    }
+        (None, None) => Ok(Config::default()),
+    };
+    loaded.unwrap_or_else(|warning| {
+        let _ = writeln!(stderr, "warning: {warning}");
+        Config::default()
+    })
 }
 
 fn rust_files(base_dir: &Path, path: &Path) -> Vec<PathBuf> {
@@ -153,9 +159,7 @@ fn resolve_input_path(base_dir: &Path, path: &Path) -> PathBuf {
 
 fn process_file(
     file_path: &Path,
-    cli: &Cli,
-    classifier: &Classifier,
-    config: &Config,
+    imports: &ImportCheck,
     totals: &mut Totals,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
@@ -177,7 +181,8 @@ fn process_file(
         return;
     }
 
-    if cli.fix {
+    let (classifier, config) = (&imports.classifier, &imports.config);
+    if imports.fix {
         let fixed = fix_file(file_path, &content, &block, classifier, config);
         if fixed == content {
             return;
