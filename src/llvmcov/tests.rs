@@ -173,9 +173,9 @@ fn read_threshold_parses_first_line() {
 }
 
 #[test]
-fn read_threshold_fails_on_unparsable_content() {
+fn read_threshold_fails_on_invalid_content() {
     let dir = tempdir().unwrap();
-    for content in ["abc\n", ""] {
+    for content in ["abc\n", "", "NaN\n", "inf\n", "-1\n", "100.01\n"] {
         let covgate_file = write_covgate(dir.path(), content);
         assert!(read_threshold(&covgate_file).is_err(), "{content:?}");
     }
