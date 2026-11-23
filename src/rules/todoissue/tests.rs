@@ -112,6 +112,18 @@ fn comment_style_change_ends_comment_group() {
 }
 
 #[test]
+fn inner_doc_style_change_ends_comment_group() {
+    let source = "//! TODO: fix\n// See https://a.io/1\n";
+    assert_eq!(lines(source), vec![1]);
+}
+
+#[test]
+fn inner_doc_continuation_line_allowed() {
+    let source = "//! TODO: fix\n//! See https://a.io/1\n";
+    assert!(lines(source).is_empty());
+}
+
+#[test]
 fn words_starting_with_marker_not_flagged() {
     let source = "// TODOS are tracked.\n// TODO_LIST is a name.\n// FIXMEs are fine.\n";
     assert!(lines(source).is_empty());
