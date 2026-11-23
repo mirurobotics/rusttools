@@ -76,7 +76,7 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     diagnostics
 }
 
-pub fn is_suppressed(lines: &[&str], line: usize, rule: &str) -> bool {
+pub fn is_allowed_at_or_above(lines: &[&str], line: usize, rule: &str) -> bool {
     let has_marker = |n: usize| {
         n >= 1
             && lines

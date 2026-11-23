@@ -2,7 +2,7 @@
 use std::path::Path;
 
 // internal crates
-use crate::rules::{is_code_line, is_suppressed, Diagnostic, Input};
+use crate::rules::{is_allowed_at_or_above, is_code_line, Diagnostic, Input};
 
 // external crates
 use syn::visit::Visit;
@@ -45,7 +45,7 @@ struct FnVisitor<'a> {
 
 impl FnVisitor<'_> {
     fn check_block(&mut self, block: &syn::Block, anchor: usize, name: Option<String>) {
-        if is_suppressed(&self.lines, anchor, NAME) {
+        if is_allowed_at_or_above(&self.lines, anchor, NAME) {
             return;
         }
         let count = count_body_lines(&self.lines, block);
