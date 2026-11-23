@@ -70,6 +70,16 @@ fn measure_fails_on_invalid_threshold_before_running_tests() {
 }
 
 #[test]
+fn measure_fails_when_cargo_llvm_cov_fails() {
+    let root = tempdir().unwrap();
+    write_covgate(&root.path().join("src/app"), "90\n");
+
+    let error = measure(root.path()).unwrap_err();
+
+    assert!(error.contains("cargo llvm-cov failed"), "{error}");
+}
+
+#[test]
 fn parse_report_reads_region_summaries() {
     let expected = vec![
         file("/repo/src/app/mod.rs", 10, 9),
