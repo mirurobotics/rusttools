@@ -110,7 +110,7 @@ fn coverage_under(dir: &Path, files: &[FileCoverage]) -> Option<f64> {
     if count == 0 {
         return Some(0.0);
     }
-    Some((covered as f64 / count as f64 * 10000.0).floor() / 100.0)
+    Some((covered * 10000 / count) as f64 / 100.0)
 }
 
 fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {

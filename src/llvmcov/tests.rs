@@ -134,6 +134,7 @@ fn coverage_under_sums_regions_under_dir() {
         ("no files", vec![file("/src/lib.rs", 4, 4)], None),
         ("empty", vec![file("/src/app/a.rs", 0, 0)], Some(0.0)),
         ("floor", vec![file("/src/app/a.rs", 3, 2)], Some(66.66)),
+        ("exact", vec![file("/src/app/a.rs", 100, 29)], Some(29.0)),
         (
             "nested",
             vec![
