@@ -8,7 +8,11 @@ pub fn check(input: &Input) -> Vec<Diagnostic> {
     if max_lines == 0 || is_suppressed(input.source) {
         return Vec::new();
     }
-    let count = input.source.lines().filter(|line| is_code_line(line)).count();
+    let count = input
+        .source
+        .lines()
+        .filter(|line| is_code_line(line))
+        .count();
     if count <= max_lines {
         return Vec::new();
     }
