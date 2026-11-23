@@ -126,6 +126,18 @@ fn literal_inside_non_collapsing_vec_collapses() {
 }
 
 #[test]
+fn code_inside_literal_on_its_closing_line_not_counted() {
+    let src = "fn sample() {\n    let xs = [\n        1,\n        2];\n}\n";
+    assert_eq!(count_lines(src), 1);
+}
+
+#[test]
+fn literal_inside_statement_macro_collapses() {
+    let src = "fn sample() {\n    assert_eq!(got, S {\n        a: 1,\n    });\n}\n";
+    assert_eq!(count_lines(src), 1);
+}
+
+#[test]
 fn lines_around_literal_still_counted() {
     let src = format!(
         "fn sample() {{\n    let xs = [\n        1,\n        2,\n    ];\n{}}}\n",
