@@ -3,13 +3,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // internal crates
-use crate::asserts::detect::{check_file as check_asserts, Violation};
 use crate::checker::check;
 use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
-use crate::funclen;
 use crate::parser::parse;
+use crate::rules::{check_files, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
 // external crates
 use clap::Parser as ClapParser;
@@ -58,9 +57,14 @@ fn run_from_dir(
     stderr: &mut impl Write,
 ) -> i32 {
     let mut totals = Totals::default();
+    let path_files: Vec<PathBuf> = cli
+        .path
+        .iter()
+        .flat_map(|path| rust_files(base_dir, path))
+        .collect();
 
     // Run import checking if --path is provided.
-    if let Some(ref path) = cli.path {
+    if cli.path.is_some() {
         let config = load_config(base_dir, cli, stderr);
         let imports = ImportCheck {
             fix: cli.fix,
@@ -68,31 +72,33 @@ fn run_from_dir(
             config,
         };
 
-        for file_path in rust_files(base_dir, path) {
-            process_file(&file_path, &imports, &mut totals, stdout, stderr);
+        for file_path in &path_files {
+            process_file(file_path, &imports, &mut totals, stdout, stderr);
         }
     }
 
-    // Run assert checker if paths are specified.
-    let assert_violations = if !cli.assert_paths.is_empty() {
-        run_assert_check(base_dir, cli, stdout)
-    } else {
-        Vec::new()
+    let assert_files: Vec<PathBuf> = cli
+        .assert_paths
+        .iter()
+        .flat_map(|dir| rust_files(base_dir, dir))
+        .collect();
+    let limits = Limits {
+        funclen: cli.funclen_threshold,
+        field_assert: cli.assert_threshold,
     };
-
-    // Run function-length checker on the same paths as import checking.
-    let funclen_violations = run_funclen_check(base_dir, cli, stdout);
+    let mut rule_diagnostics = run_rules(&assert_files, ASSERT_PATH_RULES, &limits, stdout);
+    rule_diagnostics += run_rules(&path_files, PATH_RULES, &limits, stdout);
 
     if cli.fix {
         let _ = writeln!(stdout, "\n{} file(s) fixed.", totals.files_fixed);
-        // funclen has no auto-fix; violations still fail the run.
-        if !assert_violations.is_empty() || !funclen_violations.is_empty() {
+        // rules have no auto-fix; their diagnostics still fail the run.
+        if rule_diagnostics > 0 {
             return 1;
         }
         return 0;
     }
 
-    let total_issues = totals.diagnostics + assert_violations.len() + funclen_violations.len();
+    let total_issues = totals.diagnostics + rule_diagnostics;
     if total_issues > 0 {
         let _ = writeln!(stdout, "\n{} violation(s) found.", total_issues);
         return 1;
@@ -101,85 +107,19 @@ fn run_from_dir(
     0
 }
 
-fn run_assert_check(base_dir: &Path, cli: &Cli, stdout: &mut impl Write) -> Vec<Violation> {
-    let mut all_violations: Vec<Violation> = Vec::new();
-
-    for dir in &cli.assert_paths {
-        let resolved = resolve_input_path(base_dir, dir);
-        for entry in WalkDir::new(&resolved).into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if path.extension().is_none_or(|ext| ext != "rs") {
-                continue;
-            }
-            let source = match std::fs::read_to_string(path) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            all_violations.extend(check_asserts(path, &source, cli.assert_threshold));
-        }
-    }
-
-    if all_violations.is_empty() {
-        return all_violations;
-    }
-
-    all_violations.sort_by(|a, b| a.file.cmp(&b.file).then(a.line.cmp(&b.line)));
-
+fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut impl Write) -> usize {
+    let diagnostics = check_files(files, rules, limits);
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for v in &all_violations {
-        let display_path = v.file.strip_prefix(&cwd).unwrap_or(&v.file).display();
+    for diagnostic in &diagnostics {
+        let file = &diagnostic.file;
+        let display_path = file.strip_prefix(&cwd).unwrap_or(file).display();
         let _ = writeln!(
             stdout,
-            "{}:{}: {} assert_eq! calls on fields of `{}` \u{2014} consider constructing an expected struct [field-by-field-assert]",
-            display_path, v.line, v.count, v.receiver
+            "{}:{}: {} [{}]",
+            display_path, diagnostic.line, diagnostic.message, diagnostic.kind
         );
     }
-
-    all_violations
-}
-
-fn run_funclen_check(
-    base_dir: &Path,
-    cli: &Cli,
-    stdout: &mut impl Write,
-) -> Vec<funclen::Violation> {
-    let Some(ref path) = cli.path else {
-        return Vec::new();
-    };
-    if cli.funclen_threshold == 0 {
-        return Vec::new();
-    }
-
-    let mut all_violations: Vec<funclen::Violation> = Vec::new();
-    for file_path in rust_files(base_dir, path) {
-        let source = match std::fs::read_to_string(&file_path) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-        all_violations.extend(funclen::check_file(
-            &file_path,
-            &source,
-            cli.funclen_threshold,
-        ));
-    }
-
-    all_violations.sort_by(|a, b| a.file.cmp(&b.file).then(a.line.cmp(&b.line)));
-
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for v in &all_violations {
-        let display_path = v.file.strip_prefix(&cwd).unwrap_or(&v.file).display();
-        let target = match &v.name {
-            Some(name) => format!("function `{name}`"),
-            None => "closure".to_string(),
-        };
-        let _ = writeln!(
-            stdout,
-            "{}:{}: {} is {} lines (limit {}) [funclen]",
-            display_path, v.line, target, v.count, v.limit
-        );
-    }
-
-    all_violations
+    diagnostics.len()
 }
 
 struct ImportCheck {
@@ -859,5 +799,43 @@ fn long() {
 
         assert_eq!(exit_code, 0);
         assert!(stdout.is_empty());
+    }
+
+    #[test]
+    fn run_skips_unparseable_rs_file_and_continues() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("broken.rs"),
+            "this is not valid rust at all {{{",
+        )
+        .unwrap();
+        fs::write(
+            dir.path().join("test.rs"),
+            r#"
+#[test]
+fn test_example() {
+    let req = get_request();
+    assert_eq!(req.call, Call::GetDeployment);
+    assert_eq!(req.method, Method::GET);
+    assert_eq!(req.path, "/deployments");
+    assert_eq!(req.url, "http://mock/deployments");
+}
+"#,
+        )
+        .unwrap();
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit_code = run(
+            &assert_cli(vec![dir.path().to_path_buf()]),
+            &mut stdout,
+            &mut stderr,
+        );
+        let stdout = String::from_utf8(stdout).unwrap();
+
+        assert_eq!(exit_code, 1);
+        assert!(stdout.contains("field-by-field-assert"));
+        assert!(stdout.contains("\n1 violation(s) found."));
+        assert!(!stdout.contains("broken.rs"));
     }
 }
