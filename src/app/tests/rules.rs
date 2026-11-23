@@ -15,6 +15,7 @@ fn assert_cli(assert_paths: Vec<PathBuf>) -> Cli {
         assert_paths,
         assert_threshold: 4,
         funclen_threshold: 50,
+        filelen_threshold: 300,
     }
 }
 
@@ -95,6 +96,7 @@ fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
         assert_paths: Vec::new(),
         assert_threshold: 4,
         funclen_threshold,
+        filelen_threshold: 300,
     }
 }
 

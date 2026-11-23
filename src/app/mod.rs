@@ -43,6 +43,13 @@ pub struct Cli {
     /// Max non-blank, non-comment body lines per function (0 disables)
     #[arg(long = "funclen-threshold", default_value_t = 50)]
     pub funclen_threshold: usize,
+
+    #[arg(
+        long = "filelen-threshold",
+        default_value_t = 300,
+        help = "Max non-blank, non-comment lines per file (0 disables)"
+    )]
+    pub filelen_threshold: usize,
 }
 
 pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
@@ -89,6 +96,7 @@ fn run_from_dir(
     let limits = Limits {
         funclen: cli.funclen_threshold,
         field_assert: cli.assert_threshold,
+        filelen: cli.filelen_threshold,
     };
     let mut rule_diagnostics = run_rules(&assert_files, ASSERT_PATH_RULES, &limits, stdout);
     rule_diagnostics += run_rules(&path_files, PATH_RULES, &limits, stdout);

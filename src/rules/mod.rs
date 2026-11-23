@@ -1,4 +1,5 @@
 mod fieldassert;
+mod filelen;
 mod funclen;
 
 // standard crates
@@ -7,11 +8,12 @@ use std::path::{Path, PathBuf};
 pub struct Limits {
     pub funclen: usize,
     pub field_assert: usize,
+    pub filelen: usize,
 }
 
 pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
 
-pub const PATH_RULES: &[Rule] = &[funclen::check];
+pub const PATH_RULES: &[Rule] = &[funclen::check, filelen::check];
 
 pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
@@ -84,6 +86,7 @@ mod tests {
         let limits = Limits {
             funclen: 0,
             field_assert: 0,
+            filelen: 0,
         };
 
         let diagnostics = check_files(&[b.clone(), a.clone()], &[late, early], &limits);

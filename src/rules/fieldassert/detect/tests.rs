@@ -20,6 +20,7 @@ fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Diagnostic> {
     let limits = Limits {
         funclen: 0,
         field_assert: threshold,
+        filelen: 0,
     };
     check(&Input {
         path,

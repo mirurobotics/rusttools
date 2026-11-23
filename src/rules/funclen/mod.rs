@@ -195,6 +195,7 @@ mod tests {
         let limits = Limits {
             funclen: max_lines,
             field_assert: 0,
+            filelen: 0,
         };
         super::check(&Input {
             path,

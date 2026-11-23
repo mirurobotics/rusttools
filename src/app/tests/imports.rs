@@ -15,6 +15,7 @@ fn cli(path: PathBuf, fix: bool, config: Option<PathBuf>) -> Cli {
         assert_paths: Vec::new(),
         assert_threshold: 4,
         funclen_threshold: 50,
+        filelen_threshold: 300,
     }
 }
 
