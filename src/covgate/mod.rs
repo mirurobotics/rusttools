@@ -60,3 +60,6 @@ enum Status {
     Below { actual: f64, minimum: f64 },
     Meets { actual: f64, minimum: f64 },
 }
+
+#[cfg(test)]
+mod tests;

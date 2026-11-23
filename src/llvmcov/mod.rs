@@ -9,6 +9,7 @@ use walkdir::WalkDir;
 pub const SRC_DIR: &str = "src";
 const COVGATE_FILE: &str = ".covgate";
 
+#[derive(Debug, PartialEq)]
 pub struct ModuleCoverage {
     pub name: String,
     pub covgate_file: PathBuf,
@@ -16,6 +17,7 @@ pub struct ModuleCoverage {
     pub coverage: Option<f64>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Threshold {
     Skip,
     Min(f64),
@@ -139,19 +141,22 @@ struct Export {
     files: Vec<FileCoverage>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct FileCoverage {
     filename: PathBuf,
     summary: Summary,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct Summary {
     regions: Regions,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct Regions {
     count: u64,
     covered: u64,
 }
+
+#[cfg(test)]
+mod tests;

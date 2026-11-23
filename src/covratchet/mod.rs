@@ -53,3 +53,6 @@ enum Outcome {
     Raised { from: f64, to: f64 },
     Kept { actual: f64, minimum: f64 },
 }
+
+#[cfg(test)]
+mod tests;
