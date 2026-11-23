@@ -296,6 +296,24 @@ mod tests {
     }
 
     #[test]
+    fn cfg_test_impl_and_trait_exempt() {
+        let src = format!(
+            "#[cfg(test)]\nimpl S {{\n    fn helper() {{\n{0}    }}\n}}\n\
+             #[cfg(test)]\ntrait T {{\n    fn helper() {{\n{0}    }}\n}}\n",
+            body(10)
+        );
+        assert!(check(&src, 3).is_empty());
+    }
+
+    #[test]
+    fn doc_commented_fn_over_limit_reported() {
+        let src = format!("/// Docs.\nfn sample() {{\n{}}}\n", body(4));
+        let violations = check(&src, 3);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].line, 2);
+    }
+
+    #[test]
     fn cfg_feature_test_fn_exempt() {
         let src = format!(
             "#[cfg(feature = \"test\")]\nfn sample() {{\n{}}}\n",
