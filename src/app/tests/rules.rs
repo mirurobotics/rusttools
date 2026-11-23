@@ -163,6 +163,23 @@ fn run_funclen_check_clean_under_limit() {
 }
 
 #[test]
+fn run_filelen_check_reports_file_over_default_limit() {
+    let dir = tempdir().unwrap();
+    let source = "const _: u8 = 0;\n".repeat(301);
+    fs::write(dir.path().join("long.rs"), source).unwrap();
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(dir.path().to_path_buf());
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(&cli, &mut stdout, &mut stderr);
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 1);
+    assert!(stdout.contains("file is 301 lines (limit 300) [filelen]"));
+}
+
+#[test]
 fn run_skips_unparseable_rs_file_and_continues() {
     let dir = tempdir().unwrap();
     fs::write(

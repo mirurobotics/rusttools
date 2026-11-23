@@ -26,3 +26,6 @@ fn is_suppressed(source: &str) -> bool {
         .next()
         .is_some_and(|line| has_allow_marker(line, NAME))
 }
+
+#[cfg(test)]
+mod tests;
