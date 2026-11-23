@@ -24,9 +24,10 @@ fn collect_from_items(items: &[syn::Item], input: &Input, diagnostics: &mut Vec<
                 check_test_fn(item_fn, input, diagnostics);
             }
             syn::Item::Mod(item_mod) => {
-                if let Some((_, ref items)) = item_mod.content {
-                    collect_from_items(items, input, diagnostics);
-                }
+                let Some((_, items)) = &item_mod.content else {
+                    continue;
+                };
+                collect_from_items(items, input, diagnostics);
             }
             _ => {}
         }

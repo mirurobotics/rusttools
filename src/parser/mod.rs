@@ -164,14 +164,7 @@ fn parse_use_statement(
         text.push_str(l);
         text.push('\n');
 
-        for ch in l.chars() {
-            match ch {
-                '{' => brace_depth += 1,
-                '}' => brace_depth -= 1,
-                _ => {}
-            }
-        }
-
+        brace_depth += brace_delta(l);
         i += 1;
 
         // Statement ends when we hit a semicolon and brace depth is 0
@@ -192,6 +185,16 @@ fn parse_use_statement(
         attrs: std::mem::take(pending_attrs),
     };
     (stmt, i)
+}
+
+fn brace_delta(line: &str) -> i32 {
+    line.chars()
+        .map(|ch| match ch {
+            '{' => 1,
+            '}' => -1,
+            _ => 0,
+        })
+        .sum()
 }
 
 fn skip_leading_prelude(lines: &[&str]) -> usize {
