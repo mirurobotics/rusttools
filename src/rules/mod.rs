@@ -8,13 +8,16 @@ use std::path::{Path, PathBuf};
 // external crates
 use clap::Args;
 
-#[derive(Args, Default)]
+const DEFAULT_FIELD_ASSERT: usize = 4;
+const DEFAULT_FUNCLEN: usize = 50;
+
+#[derive(Args)]
 pub struct Limits {
     /// Minimum field-asserts on the same receiver to flag (default: 4)
     #[arg(
         long = "assert-threshold",
         value_name = "ASSERT_THRESHOLD",
-        default_value_t = 4
+        default_value_t = DEFAULT_FIELD_ASSERT
     )]
     pub field_assert: usize,
 
@@ -22,7 +25,7 @@ pub struct Limits {
     #[arg(
         long = "funclen-threshold",
         value_name = "FUNCLEN_THRESHOLD",
-        default_value_t = 50
+        default_value_t = DEFAULT_FUNCLEN
     )]
     pub funclen: usize,
 
@@ -33,6 +36,15 @@ pub struct Limits {
         help = "Max non-blank, non-comment lines per file (0 disables)"
     )]
     pub filelen: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            field_assert: DEFAULT_FIELD_ASSERT,
+            funclen: DEFAULT_FUNCLEN,
+        }
+    }
 }
 
 pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
