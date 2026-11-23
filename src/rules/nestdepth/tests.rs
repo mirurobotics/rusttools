@@ -206,14 +206,16 @@ fn f() {
         loop {
             let task = async {
                 loop {
-                    loop {}
+                    loop {
+                        loop {}
+                    }
                 }
             };
         }
     }
 }
 ";
-    assert!(check(source, 2).is_empty());
+    assert_eq!(lines(source, 2), vec![7]);
 }
 
 #[test]
