@@ -14,6 +14,26 @@ fn assert_cli(assert_paths: Vec<PathBuf>) -> Cli {
 }
 
 #[test]
+fn threshold_flags_parse_into_limits() {
+    let cli = Cli::parse_from([
+        "lint-imports",
+        "--assert-threshold",
+        "7",
+        "--funclen-threshold",
+        "9",
+    ]);
+    assert_eq!((cli.limits.field_assert, cli.limits.funclen), (7, 9));
+}
+
+#[test]
+fn threshold_flags_default_to_limits_default() {
+    let parsed = Cli::parse_from(["lint-imports"]).limits;
+    let defaults = Limits::default();
+    assert_eq!((parsed.field_assert, parsed.funclen), (4, 50));
+    assert_eq!((defaults.field_assert, defaults.funclen), (4, 50));
+}
+
+#[test]
 fn run_assert_check_flags_field_by_field_asserts() {
     let dir = tempdir().unwrap();
     fs::write(
