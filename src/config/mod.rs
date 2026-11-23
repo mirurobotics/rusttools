@@ -142,6 +142,19 @@ external = "// external"
     }
 
     #[test]
+    fn find_from_malformed_ancestor_returns_parse_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("sub");
+        fs::create_dir_all(&child).unwrap();
+        let path = dir.path().join(".lint-imports.toml");
+        fs::write(&path, "this is not valid toml [[[").unwrap();
+
+        let error = Config::find_from(&child).unwrap_err();
+        let expected = format!("could not parse {}", path.display());
+        assert!(error.starts_with(&expected));
+    }
+
+    #[test]
     fn find_from_no_config_returns_default() {
         let dir = tempfile::tempdir().unwrap();
         let config = Config::find_from(dir.path()).unwrap();

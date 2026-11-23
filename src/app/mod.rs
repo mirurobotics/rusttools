@@ -358,6 +358,12 @@ mod tests {
         let dir = tempdir().unwrap();
         let config = dir.path().join(".lint-imports.toml");
         fs::write(&config, "this is not valid toml [[[").unwrap();
+        fs::write(
+            dir.path().join("labeled.rs"),
+            "// internal crates\nuse crate::x::Y;\n",
+        )
+        .unwrap();
+        fs::write(dir.path().join("unlabeled.rs"), "use crate::x::Y;\n").unwrap();
 
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
@@ -366,8 +372,12 @@ mod tests {
             &mut stdout,
             &mut stderr,
         );
+        let stdout = String::from_utf8(stdout).unwrap();
 
-        assert_eq!(exit_code, 0);
+        assert_eq!(exit_code, 1);
+        assert!(stdout.contains("unlabeled.rs:"));
+        assert!(stdout.contains("[missing-header]"));
+        assert!(stdout.contains("\n1 violation(s) found."));
         let stderr = String::from_utf8(stderr).unwrap();
         let expected = format!("warning: could not parse {}", config.display());
         assert!(stderr.starts_with(&expected));
