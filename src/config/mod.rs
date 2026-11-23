@@ -47,8 +47,7 @@ impl Config {
     pub fn from_file(path: &Path) -> Result<Self, String> {
         let content = std::fs::read_to_string(path)
             .map_err(|e| format!("could not read {}: {e}", path.display()))?;
-        toml::from_str(&content)
-            .map_err(|e| format!("could not parse {}: {e}", path.display()))
+        toml::from_str(&content).map_err(|e| format!("could not parse {}: {e}", path.display()))
     }
 
     /// Walk up from `start` looking for `.lint-imports.toml`.
