@@ -38,34 +38,7 @@ impl FileContext {
         };
 
         let is_test_path = components[root_idx] == "tests";
-        let mut module_path = components[root_idx + 1..].to_vec();
-
-        let Some(last) = module_path.last().cloned() else {
-            return Self {
-                module_path,
-                is_test_path,
-            };
-        };
-
-        let Some(stem) = last.strip_suffix(".rs") else {
-            return Self {
-                module_path,
-                is_test_path,
-            };
-        };
-
-        match stem {
-            "mod" => {
-                module_path.pop();
-            }
-            "lib" | "main" => {
-                module_path.clear();
-            }
-            _ => {
-                module_path.pop();
-                module_path.push(stem.to_string());
-            }
-        }
+        let module_path = to_module_path(&components[root_idx + 1..]);
 
         Self {
             module_path,
@@ -84,6 +57,33 @@ fn resolve_path(base_dir: Option<&Path>, file: &Path) -> Option<PathBuf> {
     };
 
     std::fs::canonicalize(&candidate).ok().or(Some(candidate))
+}
+
+fn to_module_path(file_parts: &[String]) -> Vec<String> {
+    let mut module_path = file_parts.to_vec();
+
+    let Some(last) = module_path.last().cloned() else {
+        return module_path;
+    };
+
+    let Some(stem) = last.strip_suffix(".rs") else {
+        return module_path;
+    };
+
+    match stem {
+        "mod" => {
+            module_path.pop();
+        }
+        "lib" | "main" => {
+            module_path.clear();
+        }
+        _ => {
+            module_path.pop();
+            module_path.push(stem.to_string());
+        }
+    }
+
+    module_path
 }
 
 pub(crate) fn resolve_absolute_path(ctx: &FileContext, path: &[String]) -> Option<Vec<String>> {

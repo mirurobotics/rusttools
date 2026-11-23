@@ -119,10 +119,11 @@ fn collect_assert_eqs_from_stmt(stmt: &syn::Stmt, records: &mut Vec<(String, usi
 }
 
 fn collect_assert_eqs_from_expr(expr: &syn::Expr, records: &mut Vec<(String, usize)>) {
+    if let Some(block) = inner_block(expr) {
+        collect_assert_eqs_from_stmts(&block.stmts, records);
+        return;
+    }
     match expr {
-        syn::Expr::Block(block) => {
-            collect_assert_eqs_from_stmts(&block.block.stmts, records);
-        }
         syn::Expr::If(expr_if) => {
             collect_assert_eqs_from_stmts(&expr_if.then_branch.stmts, records);
             if let Some((_, else_branch)) = &expr_if.else_branch {
@@ -134,22 +135,21 @@ fn collect_assert_eqs_from_expr(expr: &syn::Expr, records: &mut Vec<(String, usi
                 collect_assert_eqs_from_expr(&arm.body, records);
             }
         }
-        syn::Expr::ForLoop(for_loop) => {
-            collect_assert_eqs_from_stmts(&for_loop.body.stmts, records);
-        }
-        syn::Expr::While(while_loop) => {
-            collect_assert_eqs_from_stmts(&while_loop.body.stmts, records);
-        }
-        syn::Expr::Loop(loop_expr) => {
-            collect_assert_eqs_from_stmts(&loop_expr.body.stmts, records);
-        }
-        syn::Expr::Unsafe(unsafe_expr) => {
-            collect_assert_eqs_from_stmts(&unsafe_expr.block.stmts, records);
-        }
         syn::Expr::Macro(expr_macro) => {
             check_macro(&expr_macro.mac, records);
         }
         _ => {}
+    }
+}
+
+fn inner_block(expr: &syn::Expr) -> Option<&syn::Block> {
+    match expr {
+        syn::Expr::Block(block) => Some(&block.block),
+        syn::Expr::ForLoop(for_loop) => Some(&for_loop.body),
+        syn::Expr::While(while_loop) => Some(&while_loop.body),
+        syn::Expr::Loop(loop_expr) => Some(&loop_expr.body),
+        syn::Expr::Unsafe(unsafe_expr) => Some(&unsafe_expr.block),
+        _ => None,
     }
 }
 

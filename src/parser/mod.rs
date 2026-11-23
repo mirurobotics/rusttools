@@ -61,52 +61,8 @@ pub fn parse(content: &str) -> ImportBlock {
     let mut pending_attrs: Vec<String> = Vec::new();
     let start_line = i + 1;
 
-    while i < lines.len() {
-        let line = lines[i];
-        let trimmed = line.trim();
-
-        // Blank line
-        if trimmed.is_empty() {
-            // Flush any pending attrs as comments (they weren't followed by a use)
-            flush_attrs_as_comments(&mut items, &mut pending_attrs, i);
-            items.push(ImportBlockItem::BlankLine { line: i + 1 });
-            i += 1;
-            continue;
-        }
-
-        // Comment line (// ...)
-        // Only accept group header comments as part of the import block.
-        // Any other comment (like `// === section ===`) ends the block.
-        if trimmed.starts_with("//") {
-            if !is_group_header_comment(trimmed) {
-                break;
-            }
-            push_header_comment(&mut items, &mut pending_attrs, line, i);
-            i += 1;
-            continue;
-        }
-
-        // Attribute line (#[...]) — only if followed by a use statement
-        // (skipping further attrs in the lookahead)
-        if trimmed.starts_with("#[") {
-            if !attrs_lead_to_use(&lines, i) {
-                break;
-            }
-            pending_attrs.push(line.to_string());
-            i += 1;
-            continue;
-        }
-
-        // use or pub use statement
-        if trimmed.starts_with("use ") || trimmed.starts_with("pub use ") {
-            let (stmt, next) = parse_use_statement(&lines, i, &mut pending_attrs);
-            items.push(ImportBlockItem::Use(stmt));
-            i = next;
-            continue;
-        }
-
-        // Anything else ends the import block
-        break;
+    while let Some(next) = parse_line(&lines, i, &mut items, &mut pending_attrs) {
+        i = next;
     }
 
     // Flush any trailing pending attrs (shouldn't normally happen)
@@ -122,6 +78,55 @@ pub fn parse(content: &str) -> ImportBlock {
         start_line,
         end_line: i + 1,
     }
+}
+
+fn parse_line(
+    lines: &[&str],
+    i: usize,
+    items: &mut Vec<ImportBlockItem>,
+    pending_attrs: &mut Vec<String>,
+) -> Option<usize> {
+    let line = *lines.get(i)?;
+    let trimmed = line.trim();
+
+    // Blank line
+    if trimmed.is_empty() {
+        // Flush any pending attrs as comments (they weren't followed by a use)
+        flush_attrs_as_comments(items, pending_attrs, i);
+        items.push(ImportBlockItem::BlankLine { line: i + 1 });
+        return Some(i + 1);
+    }
+
+    // Comment line (// ...)
+    // Only accept group header comments as part of the import block.
+    // Any other comment (like `// === section ===`) ends the block.
+    if trimmed.starts_with("//") {
+        if !is_group_header_comment(trimmed) {
+            return None;
+        }
+        push_header_comment(items, pending_attrs, line, i);
+        return Some(i + 1);
+    }
+
+    // Attribute line (#[...]) — only if followed by a use statement
+    // (skipping further attrs in the lookahead)
+    if trimmed.starts_with("#[") {
+        if !attrs_lead_to_use(lines, i) {
+            return None;
+        }
+        pending_attrs.push(line.to_string());
+        return Some(i + 1);
+    }
+
+    // use or pub use statement
+    if trimmed.starts_with("use ") || trimmed.starts_with("pub use ") {
+        let (stmt, next) = parse_use_statement(lines, i, pending_attrs);
+        items.push(ImportBlockItem::Use(stmt));
+        return Some(next);
+    }
+
+    // Anything else ends the import block
+    None
 }
 
 fn flush_attrs_as_comments(
