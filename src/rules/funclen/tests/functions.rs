@@ -50,6 +50,14 @@ fn closure_over_limit_reported_without_name() {
 }
 
 #[test]
+fn expression_closure_not_checked() {
+    let src = "fn outer() {\n    let f = |x| x\n        + 1\n        + 2;\n}\n";
+    let violations = check(src, 2);
+    assert_eq!(violations.len(), 1);
+    assert!(violations[0].message.starts_with("function `outer`"));
+}
+
+#[test]
 fn impl_method_over_limit_reported() {
     let src = format!(
         "struct S;\nimpl S {{\n    fn method(&self) {{\n{}    }}\n}}\n",
