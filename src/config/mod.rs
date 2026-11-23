@@ -1,4 +1,5 @@
 // standard crates
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // external crates
@@ -44,21 +45,21 @@ impl Default for Labels {
 }
 
 impl Config {
-    pub fn from_file(path: &Path) -> Self {
+    pub fn from_file(path: &Path, stderr: &mut impl Write) -> Self {
         match std::fs::read_to_string(path) {
             Ok(content) => toml::from_str(&content).unwrap_or_else(|e| {
-                eprintln!("warning: could not parse {}: {e}", path.display());
+                let _ = writeln!(stderr, "warning: could not parse {}: {e}", path.display());
                 Self::default()
             }),
             Err(e) => {
-                eprintln!("warning: could not read {}: {e}", path.display());
+                let _ = writeln!(stderr, "warning: could not read {}: {e}", path.display());
                 Self::default()
             }
         }
     }
 
     /// Walk up from `start` looking for `.lint-imports.toml`.
-    pub fn find_from(start: &Path) -> Self {
+    pub fn find_from(start: &Path, stderr: &mut impl Write) -> Self {
         let start = if start.is_file() {
             start.parent().map(Path::to_path_buf).unwrap_or_default()
         } else {
@@ -69,7 +70,7 @@ impl Config {
         while let Some(d) = dir {
             let candidate = d.join(".lint-imports.toml");
             if candidate.is_file() {
-                return Self::from_file(&candidate);
+                return Self::from_file(&candidate, stderr);
             }
             dir = d.parent().map(Path::to_path_buf);
         }
@@ -108,7 +109,7 @@ external = "// external"
         )
         .unwrap();
 
-        let config = Config::from_file(&path);
+        let config = Config::from_file(&path, &mut std::io::sink());
         assert_eq!(config.internal_crates, vec!["my_lib", "other_lib"]);
         assert_eq!(config.labels.standard, "// std");
         assert_eq!(config.labels.internal, "// internal");
@@ -117,7 +118,10 @@ external = "// external"
 
     #[test]
     fn from_file_missing_returns_default() {
-        let config = Config::from_file(Path::new("/nonexistent/.lint-imports.toml"));
+        let config = Config::from_file(
+            Path::new("/nonexistent/.lint-imports.toml"),
+            &mut std::io::sink(),
+        );
         assert!(config.internal_crates.is_empty());
         assert_eq!(config.labels.standard, "// standard crates");
     }
@@ -128,7 +132,7 @@ external = "// external"
         let path = dir.path().join(".lint-imports.toml");
         fs::write(&path, "this is not valid toml [[[").unwrap();
 
-        let config = Config::from_file(&path);
+        let config = Config::from_file(&path, &mut std::io::sink());
         assert!(config.internal_crates.is_empty());
         assert_eq!(config.labels.standard, "// standard crates");
     }
@@ -144,14 +148,14 @@ external = "// external"
         )
         .unwrap();
 
-        let config = Config::find_from(&child);
+        let config = Config::find_from(&child, &mut std::io::sink());
         assert_eq!(config.internal_crates, vec!["found_it"]);
     }
 
     #[test]
     fn find_from_no_config_returns_default() {
         let dir = tempfile::tempdir().unwrap();
-        let config = Config::find_from(dir.path());
+        let config = Config::find_from(dir.path(), &mut std::io::sink());
         assert!(config.internal_crates.is_empty());
         assert_eq!(config.labels.standard, "// standard crates");
     }

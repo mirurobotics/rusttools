@@ -61,7 +61,7 @@ fn run_from_dir(
 
     // Run import checking if --path is provided.
     if let Some(ref path) = cli.path {
-        let config = load_config(base_dir, cli);
+        let config = load_config(base_dir, cli, stderr);
         let classifier = Classifier::new(&config);
 
         for file_path in rust_files(base_dir, path) {
@@ -192,10 +192,10 @@ struct Totals {
     files_fixed: usize,
 }
 
-fn load_config(base_dir: &Path, cli: &Cli) -> Config {
+fn load_config(base_dir: &Path, cli: &Cli, stderr: &mut impl Write) -> Config {
     match (&cli.config, &cli.path) {
-        (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg)),
-        (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path)),
+        (Some(cfg), _) => Config::from_file(&resolve_input_path(base_dir, cfg), stderr),
+        (None, Some(path)) => Config::find_from(&resolve_input_path(base_dir, path), stderr),
         (None, None) => Config::default(),
     }
 }
