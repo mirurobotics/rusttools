@@ -149,7 +149,14 @@ use crate::filesys::Overwrite;
     );
 }
 
-fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> (i32, String, Vec<u8>, String) {
+struct NestedFix {
+    exit_code: i32,
+    stdout: String,
+    stderr: Vec<u8>,
+    fixed: String,
+}
+
+fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> NestedFix {
     let dir = tempdir().unwrap();
     let config_path = dir.path().join(".lint-imports.toml");
     let nested_dir = dir.path().join(nested);
@@ -168,12 +175,22 @@ fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> (i32, String,
     );
     let stdout = String::from_utf8(stdout).unwrap();
     let fixed = fs::read_to_string(&file_path).unwrap();
-    (exit_code, stdout, stderr, fixed)
+    NestedFix {
+        exit_code,
+        stdout,
+        stderr,
+        fixed,
+    }
 }
 
 #[test]
 fn run_fix_mode_rewrites_nested_relative_path() {
-    let (exit_code, stdout, stderr, fixed) = fix_nested_file(
+    let NestedFix {
+        exit_code,
+        stdout,
+        stderr,
+        fixed,
+    } = fix_nested_file(
         "src/http",
         "deployments.rs",
         "\
@@ -196,7 +213,12 @@ fn main() {}
 
 #[test]
 fn run_fix_mode_rewrites_nested_relative_mod_file() {
-    let (exit_code, stdout, stderr, fixed) = fix_nested_file(
+    let NestedFix {
+        exit_code,
+        stdout,
+        stderr,
+        fixed,
+    } = fix_nested_file(
         "src/storage",
         "mod.rs",
         "\

@@ -76,14 +76,14 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     diagnostics
 }
 
-pub fn is_allowed_at_or_above(lines: &[&str], line: usize, rule: &str) -> bool {
+pub fn is_allowed_on_line_or_previous(lines: &[&str], line_number: usize, rule: &str) -> bool {
     let has_marker = |n: usize| {
         n >= 1
             && lines
                 .get(n - 1)
                 .is_some_and(|text| has_allow_marker(text, rule))
     };
-    has_marker(line) || has_marker(line.saturating_sub(1))
+    has_marker(line_number) || has_marker(line_number.saturating_sub(1))
 }
 
 pub fn has_allow_marker(line: &str, rule: &str) -> bool {
