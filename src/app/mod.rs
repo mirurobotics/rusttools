@@ -233,33 +233,10 @@ fn should_skip_reexport_shell(
         return false;
     }
 
-    let lines: Vec<&str> = content.lines().collect();
-    let prelude_ok = lines
-        .iter()
-        .take(block.start_line.saturating_sub(1))
-        .all(|line| {
-            let trimmed = line.trim();
-            trimmed.is_empty() || is_module_declaration(trimmed)
-        });
-    let trailing_ok = lines
-        .iter()
+    content
+        .lines()
         .skip(block.end_line.saturating_sub(1))
-        .all(|line| line.trim().is_empty());
-
-    prelude_ok && trailing_ok
-}
-
-fn is_module_declaration(trimmed: &str) -> bool {
-    let Some(stmt) = trimmed.strip_suffix(';') else {
-        return false;
-    };
-
-    let parts: Vec<&str> = stmt.split_whitespace().collect();
-    match parts.as_slice() {
-        ["mod", _] => true,
-        [visibility, "mod", _] => visibility.starts_with("pub"),
-        _ => false,
-    }
+        .all(|line| line.trim().is_empty())
 }
 
 #[cfg(test)]

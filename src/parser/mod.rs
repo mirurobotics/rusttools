@@ -1,3 +1,6 @@
+// internal crates
+use crate::rules::ALLOW_MARKER;
+
 /// A single `use` statement (possibly spanning multiple lines).
 #[derive(Debug, Clone)]
 pub struct UseStatement {
@@ -195,7 +198,7 @@ fn skip_leading_prelude(lines: &[&str]) -> usize {
     let mut i = 0;
     while i < lines.len() {
         let trimmed = lines[i].trim();
-        if trimmed.is_empty() || is_module_declaration(trimmed) {
+        if trimmed.is_empty() || is_module_declaration(trimmed) || is_allow_marker(trimmed) {
             i += 1;
             continue;
         }
@@ -215,6 +218,10 @@ fn is_module_declaration(trimmed: &str) -> bool {
         [visibility, "mod", _] => visibility.starts_with("pub"),
         _ => false,
     }
+}
+
+fn is_allow_marker(trimmed: &str) -> bool {
+    trimmed.starts_with("//") && trimmed.contains(ALLOW_MARKER)
 }
 
 /// Check if a comment line looks like a group header.

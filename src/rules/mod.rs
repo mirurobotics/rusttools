@@ -1,4 +1,5 @@
 mod fieldassert;
+mod filelen;
 mod funclen;
 
 // standard crates
@@ -9,6 +10,9 @@ use clap::Args;
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
 const DEFAULT_FUNCLEN: usize = 50;
+const DEFAULT_FILELEN: usize = 300;
+
+pub const ALLOW_MARKER: &str = "lint:allow(";
 
 #[derive(Args)]
 pub struct Limits {
@@ -27,6 +31,14 @@ pub struct Limits {
         default_value_t = DEFAULT_FUNCLEN
     )]
     pub funclen: usize,
+
+    #[arg(
+        long = "filelen-threshold",
+        value_name = "FILELEN_THRESHOLD",
+        default_value_t = DEFAULT_FILELEN,
+        help = "Max non-blank, non-comment lines per file (0 disables)"
+    )]
+    pub filelen: usize,
 }
 
 impl Default for Limits {
@@ -34,13 +46,14 @@ impl Default for Limits {
         Self {
             field_assert: DEFAULT_FIELD_ASSERT,
             funclen: DEFAULT_FUNCLEN,
+            filelen: DEFAULT_FILELEN,
         }
     }
 }
 
 pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
 
-pub const PATH_RULES: &[Rule] = &[funclen::check];
+pub const PATH_RULES: &[Rule] = &[funclen::check, filelen::check];
 
 pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
@@ -64,7 +77,7 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
 }
 
 pub fn has_allow_marker(line: &str, rule: &str) -> bool {
-    line.contains(&format!("lint:allow({rule})"))
+    line.contains(&format!("{ALLOW_MARKER}{rule})"))
 }
 
 pub fn is_code_line(line: &str) -> bool {
