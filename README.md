@@ -4,9 +4,14 @@ Miru's custom Rust linter, the Rust counterpart of [gotools](https://github.com/
 
 ## Usage
 
+The crate builds one binary, `lint-imports`. Consuming repos install it pinned to a commit and run it on their sources:
+
 ```sh
-cargo run -- --path src --config .lint-imports.toml
+cargo install --quiet --locked --git https://github.com/mirurobotics/rusttools --rev <sha> lint-imports
+lint-imports --path src --config .lint-imports.toml
 ```
+
+Inside this repo, `cargo run -- <flags>` runs the same binary.
 
 | Flag | Default | Purpose |
 | --- | --- | --- |
@@ -17,35 +22,22 @@ cargo run -- --path src --config .lint-imports.toml
 | `--assert-paths <dir>...` | | Test files to check for `field-by-field-assert` |
 | `--assert-threshold <n>` | 4 | Field asserts on one receiver that trigger it |
 
-A `// lint:allow(<rule>)` comment on or above the flagged line suppresses `funclen` and `field-by-field-assert`.
+To suppress a rule:
+
+- `funclen`: put `// lint:allow(funclen)` on the line with the `fn` keyword (or a closure's opening `|`), or on the line directly above it.
+- `field-by-field-assert`: put `// lint:allow(field-by-field-assert)` anywhere from the line with the test body's opening brace through the line with its closing brace.
 
 ## Rules covered by clippy and rustc
 
-Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimplement them. Enable them in each consuming repo:
+Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimplement them. rusttools enforces them on itself; copy the `[lints.rust]` and `[lints.clippy]` tables from its [`Cargo.toml`](Cargo.toml) and its [`clippy.toml`](clippy.toml) into each consuming repo.
 
-```toml
-# Cargo.toml
-[lints.rust]
-static_mut_refs = "deny"       # part of gotools mutableglobal
-
-[lints.clippy]
-too_many_arguments = "deny"    # gotools paramcount
-unwrap_used = "deny"           # gotools typeassert
-expect_used = "deny"           # gotools typeassert
-print_stdout = "deny"          # gotools nofmt
-print_stderr = "deny"          # gotools nofmt
-dbg_macro = "deny"             # gotools nofmt
-```
-
-```toml
-# clippy.toml
-too-many-arguments-threshold = 6
-allow-unwrap-in-tests = true
-allow-expect-in-tests = true
-allow-print-in-tests = true
-allow-dbg-in-tests = true
-```
+| gotools rule | Lint |
+| --- | --- |
+| `mutableglobal` | `static_mut_refs` (in part) |
+| `paramcount` | `too_many_arguments` |
+| `typeassert` | `unwrap_used`, `expect_used` |
+| `nofmt` | `print_stdout`, `print_stderr`, `dbg_macro` |
 
 `static_mut_refs` only rejects references to a `static mut`; declaring and assigning one, and interior-mutable statics such as `static Mutex<T>`, still compile, so it covers `mutableglobal` only in part.
 
-rustfmt covers gotools' `linelen`, `collapse`, `funcsig` and `funcinline`.
+rustfmt covers gotools' `collapse`, `funcsig` and `funcinline`, and `linelen` only in part: it leaves long string literals, comments and some macro bodies unbroken.
