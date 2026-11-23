@@ -1,12 +1,11 @@
 mod app;
-mod asserts;
 mod checker;
 mod classifier;
 mod config;
 mod fixer;
-mod funclen;
 mod normalizer;
 mod parser;
+mod rules;
 
 // standard crates
 use std::process;
