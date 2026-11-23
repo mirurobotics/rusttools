@@ -26,7 +26,7 @@ Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimpl
 ```toml
 # Cargo.toml
 [lints.rust]
-static_mut_refs = "deny"       # gotools mutableglobal
+static_mut_refs = "deny"       # part of gotools mutableglobal
 
 [lints.clippy]
 too_many_arguments = "deny"    # gotools paramcount
@@ -45,5 +45,7 @@ allow-expect-in-tests = true
 allow-print-in-tests = true
 allow-dbg-in-tests = true
 ```
+
+`static_mut_refs` only rejects references to a `static mut`; declaring and assigning one, and interior-mutable statics such as `static Mutex<T>`, still compile, so it covers `mutableglobal` only in part.
 
 rustfmt covers gotools' `linelen`, `collapse`, `funcsig` and `funcinline`.
