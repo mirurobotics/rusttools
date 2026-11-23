@@ -60,24 +60,12 @@ fn render_import_block(
 ) -> String {
     let (standard, internal, external) = bucket_by_group(uses, classifier);
     let groups = [
-        (
-            standard
-                .iter()
-                .map(|stmt| normalizer::render_original(stmt))
-                .collect::<Vec<_>>(),
-            &config.labels.standard,
-        ),
+        (render_originals(&standard), &config.labels.standard),
         (
             render_internal_group(file, &internal),
             &config.labels.internal,
         ),
-        (
-            external
-                .iter()
-                .map(|stmt| normalizer::render_original(stmt))
-                .collect::<Vec<_>>(),
-            &config.labels.external,
-        ),
+        (render_originals(&external), &config.labels.external),
     ];
 
     let mut import_block = String::new();
@@ -141,11 +129,7 @@ fn splice_import_block(content: &str, block: &ImportBlock, import_block: &str) -
 
 fn lines_after_block<'a>(lines: &'a [&'a str], block_end_line_idx: usize) -> &'a [&'a str] {
     // Collect the rest of the file (everything after the import block)
-    let rest_lines = if block_end_line_idx <= lines.len() {
-        &lines[block_end_line_idx..]
-    } else {
-        &[]
-    };
+    let rest_lines = lines.get(block_end_line_idx..).unwrap_or(&[]);
 
     // Skip leading blank lines from rest to avoid double blank lines
     let rest_skip = rest_lines
@@ -153,6 +137,13 @@ fn lines_after_block<'a>(lines: &'a [&'a str], block_end_line_idx: usize) -> &'a
         .position(|l| !l.is_empty())
         .unwrap_or(rest_lines.len());
     &rest_lines[rest_skip..]
+}
+
+fn render_originals(stmts: &[&UseStatement]) -> Vec<String> {
+    stmts
+        .iter()
+        .map(|stmt| normalizer::render_original(stmt))
+        .collect()
 }
 
 fn render_internal_group(file: &Path, uses: &[&UseStatement]) -> Vec<String> {
