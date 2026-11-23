@@ -6,20 +6,26 @@ use std::path::{Path, PathBuf};
 use crate::checker::check;
 use crate::classifier::Classifier;
 use crate::config::Config;
+use crate::covgate;
+use crate::covratchet;
 use crate::fixer::fix_file;
 use crate::parser::parse;
 use crate::rules::{check_files, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
 // external crates
-use clap::Parser as ClapParser;
+use clap::{Parser as ClapParser, Subcommand};
 use walkdir::WalkDir;
 
 #[derive(ClapParser)]
 #[command(
     name = "lint",
-    about = "Lint Rust import grouping, ordering, comment headers, and test assert patterns"
+    about = "Lint Rust import grouping, ordering, comment headers, and test assert patterns",
+    args_conflicts_with_subcommands = true
 )]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Command>,
+
     /// Directory to scan for import checking
     #[arg(long)]
     pub path: Option<PathBuf>,
@@ -40,9 +46,21 @@ pub struct Cli {
     pub limits: Limits,
 }
 
+#[derive(Subcommand)]
+pub enum Command {
+    #[command(about = "Check per-module coverage against .covgate thresholds")]
+    Covgate,
+    #[command(about = "Raise .covgate thresholds to current coverage, never lowering them")]
+    Covratchet,
+}
+
 pub fn run(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let base_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    run_from_dir(&base_dir, cli, stdout, stderr)
+    match cli.command {
+        Some(Command::Covgate) => covgate::run(&base_dir, stdout, stderr),
+        Some(Command::Covratchet) => covratchet::run(&base_dir, stdout, stderr),
+        None => run_from_dir(&base_dir, cli, stdout, stderr),
+    }
 }
 
 fn run_from_dir(
