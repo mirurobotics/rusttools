@@ -34,6 +34,15 @@ pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Di
     diagnostics
 }
 
+pub fn has_allow_marker(line: &str, rule: &str) -> bool {
+    line.contains(&format!("lint:allow({rule})"))
+}
+
+pub fn is_code_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    !trimmed.is_empty() && !trimmed.starts_with("//")
+}
+
 pub type Rule = fn(&Input) -> Vec<Diagnostic>;
 
 pub struct Input<'a> {

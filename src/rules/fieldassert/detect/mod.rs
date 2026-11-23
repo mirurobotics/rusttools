@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 // internal crates
-use crate::rules::{fieldassert::extract::root_receiver, Diagnostic, Input};
+use crate::rules::{fieldassert::extract::root_receiver, has_allow_marker, Diagnostic, Input};
 
 // external crates
 use proc_macro2::{TokenStream, TokenTree};
@@ -63,7 +63,7 @@ fn check_test_fn(item_fn: &syn::ItemFn, input: &Input, diagnostics: &mut Vec<Dia
     let fn_start = start_line.saturating_sub(1); // 0-indexed
     let fn_end = end_line.min(lines.len());
     for line in &lines[fn_start..fn_end] {
-        if line.contains("lint:allow(field-by-field-assert)") {
+        if has_allow_marker(line, NAME) {
             return;
         }
     }
