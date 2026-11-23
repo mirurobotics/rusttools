@@ -230,6 +230,42 @@ fn run_filelen_check_skips_assert_paths() {
 }
 
 #[test]
+fn run_todoissue_check_reports_todo_without_link() {
+    let dir = tempdir().unwrap();
+    let source = "// TODO: fix\nfn f() {}\n";
+    fs::write(dir.path().join("todo.rs"), source).unwrap();
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(dir.path().to_path_buf());
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(&cli, &mut stdout, &mut stderr);
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 1);
+    assert!(stdout.contains(":1: TODO comment must include an issue link"));
+    assert!(stdout.contains("(an http or https URL) [todoissue]"));
+}
+
+#[test]
+fn run_todoissue_check_skips_assert_paths() {
+    let dir = tempdir().unwrap();
+    let source = "// TODO: fix\nfn f() {}\n";
+    fs::write(dir.path().join("todo.rs"), source).unwrap();
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(
+        &assert_cli(vec![dir.path().to_path_buf()]),
+        &mut stdout,
+        &mut stderr,
+    );
+
+    assert_eq!(exit_code, 0);
+    assert!(stdout.is_empty());
+}
+
+#[test]
 fn run_check_mode_ignores_reexport_shell_after_allow_marker() {
     let dir = tempdir().unwrap();
     let module_dir = dir.path().join("src/services/deployment");
