@@ -10,7 +10,7 @@ pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write, stderr: &mut imp
     for module in modules {
         let outcome = outcome_of(module);
         if let Outcome::Raised { to, .. } = outcome {
-            if let Err(error) = write_threshold(&module.covgate, to) {
+            if let Err(error) = write_threshold(&module.covgate_file, to) {
                 let _ = writeln!(stderr, "error: {error}");
                 return 1;
             }

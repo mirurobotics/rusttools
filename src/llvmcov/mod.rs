@@ -11,7 +11,7 @@ const COVGATE_FILE: &str = ".covgate";
 
 pub struct ModuleCoverage {
     pub name: String,
-    pub covgate: PathBuf,
+    pub covgate_file: PathBuf,
     pub threshold: Threshold,
     pub coverage: Option<f64>,
 }
@@ -23,14 +23,14 @@ pub enum Threshold {
 
 pub fn measure(root: &Path) -> Result<Vec<ModuleCoverage>, String> {
     let src = root.join(SRC_DIR);
-    let covgates = find_covgates(&src);
-    if covgates.is_empty() {
+    let covgate_files = find_covgate_files(&src);
+    if covgate_files.is_empty() {
         return Err(format!("no {COVGATE_FILE} files under {}", src.display()));
     }
     let files = run_llvm_cov(root)?;
-    covgates
+    covgate_files
         .into_iter()
-        .map(|covgate| read_module(&src, covgate, &files))
+        .map(|covgate_file| read_module(&src, covgate_file, &files))
         .collect()
 }
 
@@ -58,29 +58,29 @@ fn parse_report(json: &[u8]) -> Result<Vec<FileCoverage>, String> {
         .ok_or_else(|| "cargo llvm-cov output has no coverage data".to_string())
 }
 
-fn find_covgates(src: &Path) -> Vec<PathBuf> {
-    let mut covgates: Vec<PathBuf> = WalkDir::new(src)
+fn find_covgate_files(src: &Path) -> Vec<PathBuf> {
+    let mut covgate_files: Vec<PathBuf> = WalkDir::new(src)
         .into_iter()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_file() && entry.file_name() == COVGATE_FILE)
         .map(|entry| entry.into_path())
         .collect();
-    covgates.sort();
-    covgates
+    covgate_files.sort();
+    covgate_files
 }
 
 fn read_module(
     src: &Path,
-    covgate: PathBuf,
+    covgate_file: PathBuf,
     files: &[FileCoverage],
 ) -> Result<ModuleCoverage, String> {
-    let dir = covgate.parent().unwrap_or(src);
+    let dir = covgate_file.parent().unwrap_or(src);
     let name = display_name(src, dir);
     let coverage = coverage_under(dir, files);
-    let threshold = read_threshold(&covgate)?;
+    let threshold = read_threshold(&covgate_file)?;
     Ok(ModuleCoverage {
         name,
-        covgate,
+        covgate_file,
         threshold,
         coverage,
     })
@@ -111,22 +111,22 @@ fn coverage_under(dir: &Path, files: &[FileCoverage]) -> Option<f64> {
     Some((covered as f64 / count as f64 * 10000.0).floor() / 100.0)
 }
 
-fn read_threshold(covgate: &Path) -> Result<Threshold, String> {
-    let content = std::fs::read_to_string(covgate)
-        .map_err(|e| format!("could not read {}: {e}", covgate.display()))?;
+fn read_threshold(covgate_file: &Path) -> Result<Threshold, String> {
+    let content = std::fs::read_to_string(covgate_file)
+        .map_err(|e| format!("could not read {}: {e}", covgate_file.display()))?;
     let first_line = content.lines().next().unwrap_or_default().trim();
     let min = first_line
         .parse::<f64>()
-        .map_err(|e| format!("could not parse {}: {e}", covgate.display()))?;
+        .map_err(|e| format!("could not parse {}: {e}", covgate_file.display()))?;
     if min == 0.0 {
         return Ok(Threshold::Skip);
     }
     Ok(Threshold::Min(min))
 }
 
-pub fn write_threshold(covgate: &Path, min: f64) -> Result<(), String> {
-    std::fs::write(covgate, format!("{min}\n"))
-        .map_err(|e| format!("could not write {}: {e}", covgate.display()))
+pub fn write_threshold(covgate_file: &Path, min: f64) -> Result<(), String> {
+    std::fs::write(covgate_file, format!("{min}\n"))
+        .map_err(|e| format!("could not write {}: {e}", covgate_file.display()))
 }
 
 #[derive(Deserialize)]
