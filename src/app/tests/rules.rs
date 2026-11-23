@@ -230,6 +230,27 @@ fn run_filelen_check_skips_assert_paths() {
 }
 
 #[test]
+fn run_check_mode_ignores_reexport_shell_after_allow_marker() {
+    let dir = tempdir().unwrap();
+    let module_dir = dir.path().join("src/services/deployment");
+    fs::create_dir_all(&module_dir).unwrap();
+    fs::write(
+        module_dir.join("mod.rs"),
+        "// lint:allow(filelen)\nmod get;\n\npub use get::*;\n",
+    )
+    .unwrap();
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(dir.path().to_path_buf());
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(&cli, &mut stdout, &mut stderr);
+
+    assert_eq!(exit_code, 0);
+    assert!(stdout.is_empty());
+}
+
+#[test]
 fn run_skips_unparseable_rs_file_and_continues() {
     let dir = tempdir().unwrap();
     fs::write(
