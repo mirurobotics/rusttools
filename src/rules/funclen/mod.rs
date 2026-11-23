@@ -2,7 +2,7 @@
 use std::path::Path;
 
 // internal crates
-use crate::rules::{Diagnostic, Input};
+use crate::rules::{has_allow_marker, is_code_line, Diagnostic, Input};
 
 // external crates
 use syn::visit::Visit;
@@ -71,7 +71,7 @@ impl FnVisitor<'_> {
                 && self
                     .lines
                     .get(n - 1)
-                    .is_some_and(|l| l.contains("lint:allow(funclen)"))
+                    .is_some_and(|l| has_allow_marker(l, NAME))
         };
         has_marker(line) || has_marker(line.saturating_sub(1))
     }
@@ -149,10 +149,7 @@ fn count_body_lines(lines: &[&str], block: &syn::Block) -> usize {
         .get(open..close - 1)
         .unwrap_or(&[])
         .iter()
-        .filter(|line| {
-            let trimmed = line.trim();
-            !trimmed.is_empty() && !trimmed.starts_with("//")
-        })
+        .filter(|line| is_code_line(line))
         .count()
 }
 

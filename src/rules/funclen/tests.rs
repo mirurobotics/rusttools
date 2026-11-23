@@ -17,7 +17,7 @@ fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
     let ast = syn::parse_file(source).unwrap();
     let limits = Limits {
         funclen: max_lines,
-        field_assert: 0,
+        ..Default::default()
     };
     super::check(&Input {
         path,

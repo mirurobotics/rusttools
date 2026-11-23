@@ -18,8 +18,8 @@ fn write_temp_file(content: &str) -> NamedTempFile {
 fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Diagnostic> {
     let ast = syn::parse_file(source).unwrap();
     let limits = Limits {
-        funclen: 0,
         field_assert: threshold,
+        ..Default::default()
     };
     check(&Input {
         path,
