@@ -29,12 +29,12 @@ pub fn measure(root: &Path) -> Result<Vec<ModuleCoverage>, String> {
     if covgate_files.is_empty() {
         return Err(format!("no {COVGATE_FILE} files under {}", src.display()));
     }
-    let thresholds = covgate_files
+    let covgates = covgate_files
         .into_iter()
         .map(|path| read_threshold(&path).map(|threshold| (path, threshold)))
         .collect::<Result<Vec<_>, _>>()?;
     let files = run_llvm_cov(root)?;
-    let modules: Vec<ModuleCoverage> = thresholds
+    let modules: Vec<ModuleCoverage> = covgates
         .into_iter()
         .map(|(path, threshold)| module_coverage(&src, path, threshold, &files))
         .collect();
