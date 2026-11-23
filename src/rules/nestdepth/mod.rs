@@ -42,6 +42,10 @@ impl<'ast> Visit<'ast> for NestVisitor<'_> {
         self.visit_at_depth_zero(|v| syn::visit::visit_expr_closure(v, node));
     }
 
+    fn visit_expr_async(&mut self, node: &'ast syn::ExprAsync) {
+        self.visit_at_depth_zero(|v| syn::visit::visit_expr_async(v, node));
+    }
+
     fn visit_expr(&mut self, node: &'ast syn::Expr) {
         let Some(line) = nesting_line(node) else {
             syn::visit::visit_expr(self, node);

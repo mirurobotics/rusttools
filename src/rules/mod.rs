@@ -46,7 +46,7 @@ pub struct Limits {
         long = "nestdepth-threshold",
         value_name = "NESTDEPTH_THRESHOLD",
         default_value_t = DEFAULT_NESTDEPTH,
-        help = "Max nested control-flow blocks in a function body (0 disables)"
+        help = "Max nested control-flow blocks in a function or closure body (0 disables)"
     )]
     pub nestdepth: usize,
 }

@@ -20,7 +20,7 @@ Inside this repo, `cargo run -- <flags>` runs the same binary.
 | `--config <file>` | nearest `.lint-imports.toml` | Import group labels and internal crates |
 | `--funclen-threshold <n>` | 50 | Max code lines per function; 0 disables |
 | `--filelen-threshold <n>` | 300 | Max code lines per file, tests included; 0 disables |
-| `--nestdepth-threshold <n>` | 2 | Max nested `if`/`else`, `match` and loop blocks in a function or closure body, tests included; 0 disables |
+| `--nestdepth-threshold <n>` | 2 | Max nested control-flow blocks (`if`/`else`, `match`, loops) in a function or closure body, tests included: `else if` and match arms add no depth, plain `else` contents count one level deeper, and closures and `async` blocks start at depth 0; 0 disables |
 | `--assert-paths <dir>...` | | Test files to check for `field-by-field-assert` |
 | `--assert-threshold <n>` | 4 | Field asserts on one receiver that trigger it |
 

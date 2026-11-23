@@ -86,6 +86,23 @@ fn f() {
 }
 
 #[test]
+fn sibling_branches_over_limit_each_reported() {
+    let source = "\
+fn f(n: u8) {
+    loop {
+        if n == 0 {
+            loop {}
+        }
+        if n == 1 {
+            loop {}
+        }
+    }
+}
+";
+    assert_eq!(lines(source, 2), vec![4, 7]);
+}
+
+#[test]
 fn match_while_and_loop_count() {
     let source = "\
 fn f(n: u8) {
@@ -182,6 +199,24 @@ fn f() {
 }
 
 #[test]
+fn async_block_restarts_depth() {
+    let source = "\
+fn f() {
+    loop {
+        loop {
+            let task = async {
+                loop {
+                    loop {}
+                }
+            };
+        }
+    }
+}
+";
+    assert!(check(source, 2).is_empty());
+}
+
+#[test]
 fn nested_fn_restarts_depth() {
     let source = "\
 fn f() {
@@ -213,14 +248,45 @@ fn test_fn_checked() {
 
 #[test]
 fn suppression_on_reported_line() {
-    let source = DEEP.replace('\n', " // lint:allow(nestdepth)\n");
-    assert!(check(&source, 2).is_empty());
+    let source = "\
+fn f() {
+    loop {
+        loop {
+            loop {} // lint:allow(nestdepth)
+        }
+    }
+}
+";
+    assert!(check(source, 2).is_empty());
 }
 
 #[test]
 fn suppression_on_line_above() {
-    let source = format!("// lint:allow(nestdepth)\n{DEEP}");
-    assert!(check(&source, 2).is_empty());
+    let source = "\
+fn f() {
+    loop {
+        loop {
+            // lint:allow(nestdepth)
+            loop {}
+        }
+    }
+}
+";
+    assert!(check(source, 2).is_empty());
+}
+
+#[test]
+fn marker_on_fn_line_does_not_suppress() {
+    let source = "\
+fn f() { // lint:allow(nestdepth)
+    loop {
+        loop {
+            loop {}
+        }
+    }
+}
+";
+    assert_eq!(lines(source, 2), vec![4]);
 }
 
 #[test]
