@@ -16,7 +16,6 @@ pub struct ModuleCoverage {
     pub coverage: Option<f64>,
 }
 
-#[derive(Clone, Copy)]
 pub enum Threshold {
     Skip,
     Min(f64),
