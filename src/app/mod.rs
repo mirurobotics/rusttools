@@ -8,7 +8,7 @@ use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::fixer::fix_file;
 use crate::parser::parse;
-use crate::rules::{Diagnostic, Input, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
+use crate::rules::{check as check_rules, Limits, Rule, ASSERT_PATH_RULES, PATH_RULES};
 
 // external crates
 use clap::Parser as ClapParser;
@@ -124,27 +124,6 @@ fn run_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits, stdout: &mut im
         );
     }
     diagnostics.len()
-}
-
-fn check_rules(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
-    let mut diagnostics = Vec::new();
-    for path in files {
-        let Ok(source) = std::fs::read_to_string(path) else {
-            continue;
-        };
-        let Ok(ast) = syn::parse_file(&source) else {
-            continue;
-        };
-        let input = Input {
-            path,
-            source: &source,
-            ast: &ast,
-            limits,
-        };
-        diagnostics.extend(rules.iter().flat_map(|rule| rule(&input)));
-    }
-    diagnostics.sort_by(|a, b| a.file.cmp(&b.file).then(a.line.cmp(&b.line)));
-    diagnostics
 }
 
 #[derive(Default)]
