@@ -98,12 +98,8 @@ impl Function {
         };
         references.visit_signature(sig);
         references.visit_block(block);
-        let name = match owner {
-            Some(owner) => format!("{owner}::{}", sig.ident),
-            None => sig.ident.to_string(),
-        };
         Self {
-            name,
+            name: function_key(owner, &sig.ident),
             line: sig.fn_token.span.start().line,
             callees: &references.names - &references.locals,
         }
@@ -117,8 +113,8 @@ impl<'ast> Visit<'ast> for References<'_> {
     }
 
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        if let Some(owner) = self.owner.filter(|_| is_self(&node.receiver)) {
-            self.names.insert(format!("{owner}::{}", node.method));
+        if self.owner.is_some() && is_self(&node.receiver) {
+            self.names.insert(function_key(self.owner, &node.method));
         }
         syn::visit::visit_expr_method_call(self, node);
     }
@@ -138,11 +134,18 @@ impl<'ast> Visit<'ast> for References<'_> {
 fn referenced_name(owner: Option<&str>, path: &syn::Path) -> Option<String> {
     let mut segments = path.segments.iter().map(|segment| &segment.ident);
     match (segments.next(), segments.next(), segments.next()) {
-        (Some(name), None, _) => Some(name.to_string()),
+        (Some(name), None, _) => Some(function_key(None, name)),
         (Some(first), Some(name), None) if first == "Self" => {
-            owner.map(|owner| format!("{owner}::{name}"))
+            owner.map(|owner| function_key(Some(owner), name))
         }
         _ => None,
+    }
+}
+
+fn function_key(owner: Option<&str>, name: &syn::Ident) -> String {
+    match owner {
+        Some(owner) => format!("{owner}::{name}"),
+        None => name.to_string(),
     }
 }
 
