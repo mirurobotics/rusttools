@@ -51,10 +51,6 @@ fn root_receiver_inner(expr: &syn::Expr, seen_field: bool) -> Option<String> {
 mod tests {
     use super::*;
 
-    fn parse_expr(s: &str) -> syn::Expr {
-        syn::parse_str::<syn::Expr>(s).unwrap()
-    }
-
     #[test]
     fn test_simple_field_access() {
         let expr = parse_expr("req.call");
@@ -132,5 +128,9 @@ mod tests {
         // `req.field.to_string()` — method call on a field access
         let expr = parse_expr("req.field.to_string()");
         assert_eq!(root_receiver(&expr), Some("req".to_string()));
+    }
+
+    fn parse_expr(s: &str) -> syn::Expr {
+        syn::parse_str::<syn::Expr>(s).unwrap()
     }
 }

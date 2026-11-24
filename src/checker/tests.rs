@@ -4,20 +4,6 @@ use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::parser::{parse, UseStatement};
 
-fn default_config() -> Config {
-    Config {
-        internal_crates: vec!["backend_api".to_string()],
-        ..Default::default()
-    }
-}
-
-fn check_content(content: &str) -> Vec<Diagnostic> {
-    let config = default_config();
-    let classifier = Classifier::new(&config);
-    let block = parse(content);
-    check(Path::new("test.rs"), &block, &classifier, &config)
-}
-
 #[test]
 fn correct_ordering_no_diagnostics() {
     let content = "\
@@ -225,4 +211,18 @@ fn group_headers_recognized_for_all_labels() {
     assert!(is_group_header("// external crates"));
     assert!(is_group_header("// std imports"));
     assert!(!is_group_header("// ======== SECTION ======== //"));
+}
+
+fn check_content(content: &str) -> Vec<Diagnostic> {
+    let config = default_config();
+    let classifier = Classifier::new(&config);
+    let block = parse(content);
+    check(Path::new("test.rs"), &block, &classifier, &config)
+}
+
+fn default_config() -> Config {
+    Config {
+        internal_crates: vec!["backend_api".to_string()],
+        ..Default::default()
+    }
 }

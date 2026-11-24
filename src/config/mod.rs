@@ -23,16 +23,6 @@ pub struct Labels {
     pub external: String,
 }
 
-fn default_standard_label() -> String {
-    "// standard crates".to_string()
-}
-fn default_internal_label() -> String {
-    "// internal crates".to_string()
-}
-fn default_external_label() -> String {
-    "// external crates".to_string()
-}
-
 impl Default for Labels {
     fn default() -> Self {
         Self {
@@ -43,13 +33,17 @@ impl Default for Labels {
     }
 }
 
-impl Config {
-    pub fn from_file(path: &Path) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("could not read {}: {e}", path.display()))?;
-        toml::from_str(&content).map_err(|e| format!("could not parse {}: {e}", path.display()))
-    }
+fn default_standard_label() -> String {
+    "// standard crates".to_string()
+}
+fn default_internal_label() -> String {
+    "// internal crates".to_string()
+}
+fn default_external_label() -> String {
+    "// external crates".to_string()
+}
 
+impl Config {
     /// Walk up from `start` looking for `.lint-imports.toml`.
     pub fn find_from(start: &Path) -> Result<Self, String> {
         let start = if start.is_file() {
@@ -67,6 +61,12 @@ impl Config {
             dir = d.parent().map(Path::to_path_buf);
         }
         Ok(Self::default())
+    }
+
+    pub fn from_file(path: &Path) -> Result<Self, String> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| format!("could not read {}: {e}", path.display()))?;
+        toml::from_str(&content).map_err(|e| format!("could not parse {}: {e}", path.display()))
     }
 }
 

@@ -6,27 +6,6 @@ use crate::rules::{nestdepth::*, Limits};
 
 const DEEP: &str = "fn f() { loop { loop { loop {} } } }\n";
 
-fn check(source: &str, max_depth: usize) -> Vec<Diagnostic> {
-    let ast = syn::parse_file(source).unwrap();
-    let limits = Limits {
-        nestdepth: max_depth,
-        ..Default::default()
-    };
-    super::check(&Input {
-        path: Path::new("src/lib.rs"),
-        source,
-        ast: &ast,
-        limits: &limits,
-    })
-}
-
-fn lines(source: &str, max_depth: usize) -> Vec<usize> {
-    check(source, max_depth)
-        .into_iter()
-        .map(|d| d.line)
-        .collect()
-}
-
 #[test]
 fn at_limit_no_violation() {
     let source = "\
@@ -304,4 +283,25 @@ fn other_allow_comment_does_not_suppress() {
 #[test]
 fn threshold_zero_disables() {
     assert!(check(DEEP, 0).is_empty());
+}
+
+fn lines(source: &str, max_depth: usize) -> Vec<usize> {
+    check(source, max_depth)
+        .into_iter()
+        .map(|d| d.line)
+        .collect()
+}
+
+fn check(source: &str, max_depth: usize) -> Vec<Diagnostic> {
+    let ast = syn::parse_file(source).unwrap();
+    let limits = Limits {
+        nestdepth: max_depth,
+        ..Default::default()
+    };
+    super::check(&Input {
+        path: Path::new("src/lib.rs"),
+        source,
+        ast: &ast,
+        limits: &limits,
+    })
 }
