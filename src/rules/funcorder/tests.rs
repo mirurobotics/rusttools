@@ -98,7 +98,7 @@ fn run() {
 }
 
 #[test]
-fn locals_and_qualified_paths_not_counted() {
+fn locals_paths_and_unparsed_macros_not_counted() {
     let source = "\
 fn value() -> u8 {
     1
@@ -108,6 +108,7 @@ fn helper() {}
 
 fn run(value: u8) -> u8 {
     super::helper();
+    skip!(helper =>);
     let total = value;
     total
 }
