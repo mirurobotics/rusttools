@@ -117,20 +117,7 @@ fn splice_import_block(content: &str, block: &ImportBlock, import_block: &str) -
     }
 
     output.push_str(import_block);
-
-    // Collect the rest of the file (everything after the import block)
-    let rest_lines = if block_end_line_idx <= lines.len() {
-        &lines[block_end_line_idx..]
-    } else {
-        &[]
-    };
-
-    // Skip leading blank lines from rest to avoid double blank lines
-    let rest_skip = rest_lines
-        .iter()
-        .position(|l| !l.is_empty())
-        .unwrap_or(rest_lines.len());
-    let rest_lines = &rest_lines[rest_skip..];
+    let rest_lines = lines_after_block(&lines, block_end_line_idx);
 
     // Ensure a blank line separates the import block from the rest
     if !rest_lines.is_empty() {
@@ -150,6 +137,22 @@ fn splice_import_block(content: &str, block: &ImportBlock, import_block: &str) -
     }
 
     output
+}
+
+fn lines_after_block<'a>(lines: &'a [&'a str], block_end_line_idx: usize) -> &'a [&'a str] {
+    // Collect the rest of the file (everything after the import block)
+    let rest_lines = if block_end_line_idx <= lines.len() {
+        &lines[block_end_line_idx..]
+    } else {
+        &[]
+    };
+
+    // Skip leading blank lines from rest to avoid double blank lines
+    let rest_skip = rest_lines
+        .iter()
+        .position(|l| !l.is_empty())
+        .unwrap_or(rest_lines.len());
+    &rest_lines[rest_skip..]
 }
 
 fn render_internal_group(file: &Path, uses: &[&UseStatement]) -> Vec<String> {

@@ -149,56 +149,56 @@ use crate::filesys::Overwrite;
     );
 }
 
-#[test]
-fn run_fix_mode_rewrites_nested_relative_path() {
+fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> String {
     let dir = tempdir().unwrap();
     let config_path = dir.path().join(".lint-imports.toml");
-    let nested_dir = dir.path().join("src/http");
-    let file_path = nested_dir.join("deployments.rs");
+    let nested_dir = dir.path().join(nested);
+    let file_path = nested_dir.join(file_name);
     fs::create_dir_all(&nested_dir).unwrap();
     fs::write(&config_path, "internal_crates = []\n").unwrap();
-    fs::write(
-        &file_path,
+    fs::write(&file_path, source).unwrap();
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run_from_dir(
+        &nested_dir,
+        &cli(PathBuf::from("."), true, Some(config_path)),
+        &mut stdout,
+        &mut stderr,
+    );
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 0);
+    assert!(stdout.contains("fixed:"));
+    assert!(
+        stderr.is_empty(),
+        "unexpected stderr: {:?}",
+        String::from_utf8_lossy(&stderr)
+    );
+    fs::read_to_string(&file_path).unwrap()
+}
+
+#[test]
+fn run_fix_mode_rewrites_nested_relative_path() {
+    let fixed = fix_nested_file(
+        "src/http",
+        "deployments.rs",
         "\
 // internal crates
 use super::errors::HTTPErr;
 
 fn main() {}
 ",
-    )
-    .unwrap();
-
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    let exit_code = run_from_dir(
-        &nested_dir,
-        &cli(PathBuf::from("."), true, Some(config_path.clone())),
-        &mut stdout,
-        &mut stderr,
     );
-    let stdout = String::from_utf8(stdout).unwrap();
-    let fixed = fs::read_to_string(&file_path).unwrap();
 
-    assert_eq!(exit_code, 0);
-    assert!(stdout.contains("fixed:"));
     assert!(fixed.contains("use crate::http::errors::HTTPErr;"));
-    assert!(
-        stderr.is_empty(),
-        "unexpected stderr: {:?}",
-        String::from_utf8_lossy(&stderr)
-    );
 }
 
 #[test]
 fn run_fix_mode_rewrites_nested_relative_mod_file() {
-    let dir = tempdir().unwrap();
-    let config_path = dir.path().join(".lint-imports.toml");
-    let nested_dir = dir.path().join("src/storage");
-    let file_path = nested_dir.join("mod.rs");
-    fs::create_dir_all(&nested_dir).unwrap();
-    fs::write(&config_path, "internal_crates = []\n").unwrap();
-    fs::write(
-        &file_path,
+    let fixed = fix_nested_file(
+        "src/storage",
+        "mod.rs",
         "\
 // internal crates
 use self::errors::StorageErr;
@@ -206,28 +206,9 @@ use self::layout::Layout;
 
 fn main() {}
 ",
-    )
-    .unwrap();
-
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    let exit_code = run_from_dir(
-        &nested_dir,
-        &cli(PathBuf::from("."), true, Some(config_path.clone())),
-        &mut stdout,
-        &mut stderr,
     );
-    let stdout = String::from_utf8(stdout).unwrap();
-    let fixed = fs::read_to_string(&file_path).unwrap();
 
-    assert_eq!(exit_code, 0);
-    assert!(stdout.contains("fixed:"));
     assert!(fixed.contains("use crate::storage::{errors::StorageErr, layout::Layout};"));
-    assert!(
-        stderr.is_empty(),
-        "unexpected stderr: {:?}",
-        String::from_utf8_lossy(&stderr)
-    );
 }
 
 #[test]

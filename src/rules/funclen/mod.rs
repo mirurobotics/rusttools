@@ -2,7 +2,7 @@
 use std::path::Path;
 
 // internal crates
-use crate::rules::{has_allow_marker, is_code_line, Diagnostic, Input};
+use crate::rules::{is_allowed_on_line_or_previous, is_code_line, Diagnostic, Input};
 
 // external crates
 use syn::visit::Visit;
@@ -45,7 +45,7 @@ struct FnVisitor<'a> {
 
 impl FnVisitor<'_> {
     fn check_block(&mut self, block: &syn::Block, anchor: usize, name: Option<String>) {
-        if self.is_suppressed(anchor) {
+        if is_allowed_on_line_or_previous(&self.lines, anchor, NAME) {
             return;
         }
         let count = count_body_lines(&self.lines, block);
@@ -61,19 +61,6 @@ impl FnVisitor<'_> {
                 message: format!("{target} is {count} lines (limit {})", self.max_lines),
             });
         }
-    }
-
-    /// True when the 1-based `line` or the line immediately above it contains
-    /// the `lint:allow(funclen)` escape hatch.
-    fn is_suppressed(&self, line: usize) -> bool {
-        let has_marker = |n: usize| {
-            n >= 1
-                && self
-                    .lines
-                    .get(n - 1)
-                    .is_some_and(|l| has_allow_marker(l, NAME))
-        };
-        has_marker(line) || has_marker(line.saturating_sub(1))
     }
 }
 
