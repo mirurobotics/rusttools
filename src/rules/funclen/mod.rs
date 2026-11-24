@@ -173,7 +173,7 @@ fn is_composite_literal(expr: &syn::Expr) -> bool {
     }
 }
 
-fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
+pub fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
     let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
     syn::parse2(TokenTree::Group(group).into()).ok()
 }

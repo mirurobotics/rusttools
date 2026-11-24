@@ -247,6 +247,24 @@ fn run_todoissue_check_skips_assert_paths() {
 }
 
 #[test]
+fn run_funcorder_check_reports_callee_above_caller() {
+    let dir = tempdir().unwrap();
+    let source = "fn helper() {}\n\nfn run() {\n    helper();\n}\n";
+    fs::write(dir.path().join("order.rs"), source).unwrap();
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(dir.path().to_path_buf());
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run(&cli, &mut stdout, &mut stderr);
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 1);
+    assert!(stdout.contains(":1: function `helper` should be below"));
+    assert!(stdout.contains(" its last caller `run` [funcorder]"));
+}
+
+#[test]
 fn run_check_mode_ignores_reexport_shell_after_allow_marker() {
     let dir = tempdir().unwrap();
     let module_dir = dir.path().join("src/services/deployment");
