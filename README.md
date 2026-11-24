@@ -15,7 +15,7 @@ Inside this repo, `cargo run -- <flags>` runs the same binary.
 
 | Flag | Default | Purpose |
 | --- | --- | --- |
-| `--path <dir>` | | Files to check for imports, `funclen` and `filelen` |
+| `--path <dir>` | | Files to check for imports, `funclen`, `filelen` and `todoissue` |
 | `--fix` | off | Rewrite import blocks in place |
 | `--config <file>` | nearest `.lint-imports.toml` | Import group labels and internal crates |
 | `--funclen-threshold <n>` | 30 | Max code lines per function, tests included; a multi-line struct, array or `vec!` literal counts as one unless it contains a block, match or closure; macro arguments are parsed and inspected in statement and expression position; 0 disables |
@@ -27,6 +27,7 @@ To suppress a rule:
 
 - `funclen`: put `// lint:allow(funclen)` on the line with the `fn` keyword (or a closure's opening `|`), or on the line directly above it.
 - `filelen`: put `// lint:allow(filelen)` on the file's first line.
+- `todoissue`: put `// lint:allow(todoissue)` in the same run of comment lines as the `TODO` or `FIXME`, written in the same style (`//`, `///` or `//!`).
 - `field-by-field-assert`: put `// lint:allow(field-by-field-assert)` anywhere from the line with the test body's opening brace through the line with its closing brace.
 
 ## Rules covered by clippy and rustc
