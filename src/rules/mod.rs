@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
-const DEFAULT_FUNCLEN: usize = 50;
+const DEFAULT_FUNCLEN: usize = 30;
 const DEFAULT_FILELEN: usize = 300;
 const DEFAULT_NESTDEPTH: usize = 2;
 
@@ -27,7 +27,7 @@ pub struct Limits {
     )]
     pub field_assert: usize,
 
-    /// Max non-blank, non-comment body lines per function (0 disables)
+    /// Max non-blank, non-comment body lines per function, tests included (0 disables)
     #[arg(
         long = "funclen-threshold",
         value_name = "FUNCLEN_THRESHOLD",
