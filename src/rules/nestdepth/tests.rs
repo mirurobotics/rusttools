@@ -124,33 +124,35 @@ fn match_arm_adds_no_depth() {
 fn f(n: u8) {
     match n {
         0 => {
-            if n > 0 {}
+            if n > 0 {
+                loop {}
+            }
         }
         _ => {}
     }
 }
 ";
-    assert!(check(source, 2).is_empty());
+    assert_eq!(lines(source, 2), vec![5]);
 }
 
 #[test]
 fn else_if_chain_adds_no_depth() {
     let source = "\
 fn f(n: u8) {
-    loop {
-        if n == 0 {
-        } else if n == 1 {
-        } else if n == 2 {
-        } else {
+    if n == 0 {
+    } else if n == 1 {
+    } else if n == 2 {
+        loop {
+            loop {}
         }
     }
 }
 ";
-    assert!(check(source, 2).is_empty());
+    assert_eq!(lines(source, 2), vec![6]);
 }
 
 #[test]
-fn else_block_counts_one_level_deeper() {
+fn else_block_counts_like_then_branch() {
     let source = "\
 fn f(n: u8) {
     if n == 0 {
@@ -169,12 +171,14 @@ fn let_else_adds_no_depth() {
     let source = "\
 fn f(x: Option<u8>) {
     let Some(n) = x else {
-        loop {}
+        loop {
+            loop {}
+        }
     };
     if n > 0 {}
 }
 ";
-    assert!(check(source, 1).is_empty());
+    assert_eq!(lines(source, 1), vec![4]);
 }
 
 #[test]
