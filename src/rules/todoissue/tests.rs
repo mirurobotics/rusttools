@@ -4,21 +4,6 @@ use std::path::{Path, PathBuf};
 // internal crates
 use crate::rules::{todoissue::*, Limits};
 
-fn check(source: &str) -> Vec<Diagnostic> {
-    let ast = syn::parse_file(source).unwrap();
-    let limits = Limits::default();
-    super::check(&Input {
-        path: Path::new("src/lib.rs"),
-        source,
-        ast: &ast,
-        limits: &limits,
-    })
-}
-
-fn lines(source: &str) -> Vec<usize> {
-    check(source).into_iter().map(|d| d.line).collect()
-}
-
 #[test]
 fn todo_without_link_reports_violation() {
     let violations: Vec<_> = check("fn f() {}\n// TODO: handle retries\n")
@@ -174,4 +159,19 @@ fn allow_marker_in_other_group_ignored() {
 fn other_allow_comment_does_not_suppress() {
     let source = "// lint:allow(filelen)\n// TODO: fix\n";
     assert_eq!(lines(source), vec![2]);
+}
+
+fn lines(source: &str) -> Vec<usize> {
+    check(source).into_iter().map(|d| d.line).collect()
+}
+
+fn check(source: &str) -> Vec<Diagnostic> {
+    let ast = syn::parse_file(source).unwrap();
+    let limits = Limits::default();
+    super::check(&Input {
+        path: Path::new("src/lib.rs"),
+        source,
+        ast: &ast,
+        limits: &limits,
+    })
 }

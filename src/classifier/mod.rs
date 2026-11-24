@@ -57,16 +57,6 @@ mod tests {
     use super::*;
     use crate::parser::UseStatement;
 
-    fn stmt(root: &str) -> UseStatement {
-        UseStatement {
-            text: format!("use {root}::something;\n"),
-            line: 1,
-            root_crate: root.to_string(),
-            sort_key: format!("{root}::something"),
-            attrs: vec![],
-        }
-    }
-
     #[test]
     fn classify_std() {
         let config = Config::default();
@@ -103,5 +93,15 @@ mod tests {
         assert_eq!(c.classify(&stmt("tokio")), ImportGroup::External);
         assert_eq!(c.classify(&stmt("serde")), ImportGroup::External);
         assert_eq!(c.classify(&stmt("axum")), ImportGroup::External);
+    }
+
+    fn stmt(root: &str) -> UseStatement {
+        UseStatement {
+            text: format!("use {root}::something;\n"),
+            line: 1,
+            root_crate: root.to_string(),
+            sort_key: format!("{root}::something"),
+            attrs: vec![],
+        }
     }
 }

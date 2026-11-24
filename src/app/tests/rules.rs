@@ -7,12 +7,6 @@ use crate::app::*;
 // external crates
 use tempfile::tempdir;
 
-fn assert_cli(assert_paths: Vec<PathBuf>) -> Cli {
-    let mut cli = Cli::parse_from(["lint-imports"]);
-    cli.assert_paths = assert_paths;
-    cli
-}
-
 #[test]
 fn threshold_flags_parse_into_limits() {
     let cli = Cli::parse_from([
@@ -43,23 +37,6 @@ fn threshold_flags_default_to_limits_default() {
         (defaults.field_assert, defaults.funclen, defaults.filelen),
         (4, 30, 300)
     );
-}
-
-fn write_field_asserts_test(dir: &Path) {
-    fs::write(
-        dir.join("test.rs"),
-        r#"
-#[test]
-fn test_example() {
-    let req = get_request();
-    assert_eq!(req.call, Call::GetDeployment);
-    assert_eq!(req.method, Method::GET);
-    assert_eq!(req.path, "/deployments");
-    assert_eq!(req.url, "http://mock/deployments");
-}
-"#,
-    )
-    .unwrap();
 }
 
 #[test]
@@ -116,32 +93,6 @@ fn run_assert_check_skipped_when_no_paths() {
 
     assert_eq!(exit_code, 0);
     assert!(stdout.is_empty());
-}
-
-fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
-    let mut cli = Cli::parse_from(["lint-imports"]);
-    cli.path = Some(path);
-    cli.fix = fix;
-    cli.limits.funclen = funclen_threshold;
-    cli
-}
-
-fn write_over_limit_fn(dir: &Path) {
-    fs::write(
-        dir.join("long.rs"),
-        "\
-// standard crates
-use std::sync::Arc;
-
-fn long() {
-    let _ = Arc::new(1);
-    let _ = Arc::new(2);
-    let _ = Arc::new(3);
-    let _ = Arc::new(4);
-}
-",
-    )
-    .unwrap();
 }
 
 #[test]
@@ -333,4 +284,53 @@ fn run_skips_unparseable_rs_file_and_continues() {
     assert!(stdout.contains("field-by-field-assert"));
     assert!(stdout.contains("\n1 violation(s) found."));
     assert!(!stdout.contains("broken.rs"));
+}
+
+fn assert_cli(assert_paths: Vec<PathBuf>) -> Cli {
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.assert_paths = assert_paths;
+    cli
+}
+
+fn write_field_asserts_test(dir: &Path) {
+    fs::write(
+        dir.join("test.rs"),
+        r#"
+#[test]
+fn test_example() {
+    let req = get_request();
+    assert_eq!(req.call, Call::GetDeployment);
+    assert_eq!(req.method, Method::GET);
+    assert_eq!(req.path, "/deployments");
+    assert_eq!(req.url, "http://mock/deployments");
+}
+"#,
+    )
+    .unwrap();
+}
+
+fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(path);
+    cli.fix = fix;
+    cli.limits.funclen = funclen_threshold;
+    cli
+}
+
+fn write_over_limit_fn(dir: &Path) {
+    fs::write(
+        dir.join("long.rs"),
+        "\
+// standard crates
+use std::sync::Arc;
+
+fn long() {
+    let _ = Arc::new(1);
+    let _ = Arc::new(2);
+    let _ = Arc::new(3);
+    let _ = Arc::new(4);
+}
+",
+    )
+    .unwrap();
 }

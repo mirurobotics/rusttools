@@ -32,24 +32,6 @@ type Buckets<'a> = (
     Vec<&'a UseStatement>,
 );
 
-/// Bucket use statements into (standard, internal, external) groups,
-/// preserving the original relative order within each group.
-fn bucket_by_group<'a>(uses: &[&'a UseStatement], classifier: &Classifier) -> Buckets<'a> {
-    let mut standard = Vec::new();
-    let mut internal = Vec::new();
-    let mut external = Vec::new();
-
-    for stmt in uses {
-        match classifier.classify(stmt) {
-            ImportGroup::Standard => standard.push(*stmt),
-            ImportGroup::Internal => internal.push(*stmt),
-            ImportGroup::External => external.push(*stmt),
-        }
-    }
-
-    (standard, internal, external)
-}
-
 /// Build the new import block text. Within-group order is preserved;
 /// sorting is left to `cargo fmt` (reorder_imports).
 fn render_import_block(
@@ -89,6 +71,24 @@ fn render_import_block(
     }
 
     import_block
+}
+
+/// Bucket use statements into (standard, internal, external) groups,
+/// preserving the original relative order within each group.
+fn bucket_by_group<'a>(uses: &[&'a UseStatement], classifier: &Classifier) -> Buckets<'a> {
+    let mut standard = Vec::new();
+    let mut internal = Vec::new();
+    let mut external = Vec::new();
+
+    for stmt in uses {
+        match classifier.classify(stmt) {
+            ImportGroup::Standard => standard.push(*stmt),
+            ImportGroup::Internal => internal.push(*stmt),
+            ImportGroup::External => external.push(*stmt),
+        }
+    }
+
+    (standard, internal, external)
 }
 
 /// Replace the file's original import block lines with `import_block`,

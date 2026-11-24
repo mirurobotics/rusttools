@@ -4,12 +4,12 @@ mod literals;
 // internal crates
 use crate::rules::{funclen::*, Limits};
 
-fn body(n: usize) -> String {
-    "    let x = 1;\n".repeat(n)
-}
-
 fn src_fn(n: usize) -> String {
     format!("fn sample() {{\n{}}}\n", body(n))
+}
+
+fn body(n: usize) -> String {
+    "    let x = 1;\n".repeat(n)
 }
 
 fn check(source: &str, max_lines: usize) -> Vec<Diagnostic> {

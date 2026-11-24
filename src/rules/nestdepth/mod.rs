@@ -46,6 +46,16 @@ impl<'ast> Visit<'ast> for NestVisitor<'_> {
         self.visit_at_depth_zero(|v| syn::visit::visit_expr_async(v, node));
     }
 
+    fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
+        self.visit_expr(&node.cond);
+        self.visit_block(&node.then_branch);
+        match node.else_branch.as_ref().map(|(_, branch)| &**branch) {
+            Some(syn::Expr::If(next)) => self.visit_expr_if(next),
+            Some(branch) => self.visit_expr(branch),
+            None => {}
+        }
+    }
+
     fn visit_expr(&mut self, node: &'ast syn::Expr) {
         let Some(line) = nesting_line(node) else {
             syn::visit::visit_expr(self, node);
@@ -57,16 +67,6 @@ impl<'ast> Visit<'ast> for NestVisitor<'_> {
         }
         syn::visit::visit_expr(self, node);
         self.depth -= 1;
-    }
-
-    fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
-        self.visit_expr(&node.cond);
-        self.visit_block(&node.then_branch);
-        match node.else_branch.as_ref().map(|(_, branch)| &**branch) {
-            Some(syn::Expr::If(next)) => self.visit_expr_if(next),
-            Some(branch) => self.visit_expr(branch),
-            None => {}
-        }
     }
 }
 

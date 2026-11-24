@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 // external crates
 use clap::Args;
+use proc_macro2::{Delimiter, Group, TokenTree};
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
 const DEFAULT_FUNCLEN: usize = 30;
@@ -112,6 +113,11 @@ pub fn is_code_line(line: &str) -> bool {
     !trimmed.is_empty() && !trimmed.starts_with("//")
 }
 
+pub fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
+    let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
+    syn::parse2(TokenTree::Group(group).into()).ok()
+}
+
 pub type Rule = fn(&Input) -> Vec<Diagnostic>;
 
 pub struct Input<'a> {
@@ -135,23 +141,6 @@ mod tests {
     // external crates
     use tempfile::tempdir;
 
-    fn diagnostic_at(input: &Input, line: usize) -> Vec<Diagnostic> {
-        vec![Diagnostic {
-            file: input.path.to_path_buf(),
-            line,
-            kind: "test",
-            message: String::new(),
-        }]
-    }
-
-    fn late(input: &Input) -> Vec<Diagnostic> {
-        diagnostic_at(input, 9)
-    }
-
-    fn early(input: &Input) -> Vec<Diagnostic> {
-        diagnostic_at(input, 2)
-    }
-
     #[test]
     fn check_files_sorts_by_file_then_line() {
         let dir = tempdir().unwrap();
@@ -165,5 +154,22 @@ mod tests {
 
         let order: Vec<_> = diagnostics.into_iter().map(|d| (d.file, d.line)).collect();
         assert_eq!(order, vec![(a.clone(), 2), (a, 9), (b.clone(), 2), (b, 9)]);
+    }
+
+    fn late(input: &Input) -> Vec<Diagnostic> {
+        diagnostic_at(input, 9)
+    }
+
+    fn early(input: &Input) -> Vec<Diagnostic> {
+        diagnostic_at(input, 2)
+    }
+
+    fn diagnostic_at(input: &Input, line: usize) -> Vec<Diagnostic> {
+        vec![Diagnostic {
+            file: input.path.to_path_buf(),
+            line,
+            kind: "test",
+            message: String::new(),
+        }]
     }
 }

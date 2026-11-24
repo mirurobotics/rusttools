@@ -4,28 +4,6 @@ use std::path::{Path, PathBuf};
 // internal crates
 use crate::rules::{filelen::*, Limits};
 
-fn code(n: usize) -> String {
-    "const _: u8 = 0;\n".repeat(n)
-}
-
-fn check(source: &str, max_lines: usize) -> Vec<Diagnostic> {
-    check_file(Path::new("src/lib.rs"), source, max_lines)
-}
-
-fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
-    let ast = syn::parse_file(source).unwrap();
-    let limits = Limits {
-        filelen: max_lines,
-        ..Default::default()
-    };
-    super::check(&Input {
-        path,
-        source,
-        ast: &ast,
-        limits: &limits,
-    })
-}
-
 #[test]
 fn under_limit_no_violation() {
     assert!(check(&code(2), 3).is_empty());
@@ -104,4 +82,26 @@ fn other_allow_comment_does_not_suppress() {
 #[test]
 fn threshold_zero_disables() {
     assert!(check(&code(100), 0).is_empty());
+}
+
+fn code(n: usize) -> String {
+    "const _: u8 = 0;\n".repeat(n)
+}
+
+fn check(source: &str, max_lines: usize) -> Vec<Diagnostic> {
+    check_file(Path::new("src/lib.rs"), source, max_lines)
+}
+
+fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
+    let ast = syn::parse_file(source).unwrap();
+    let limits = Limits {
+        filelen: max_lines,
+        ..Default::default()
+    };
+    super::check(&Input {
+        path,
+        source,
+        ast: &ast,
+        limits: &limits,
+    })
 }
