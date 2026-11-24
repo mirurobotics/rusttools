@@ -129,16 +129,6 @@ fn parse_block_item(
     None
 }
 
-fn flush_attrs_as_comments(
-    items: &mut Vec<ImportBlockItem>,
-    pending_attrs: &mut Vec<String>,
-    line: usize,
-) {
-    for attr in pending_attrs.drain(..) {
-        items.push(ImportBlockItem::Comment { text: attr, line });
-    }
-}
-
 fn push_header_comment(
     items: &mut Vec<ImportBlockItem>,
     pending_attrs: &mut Vec<String>,
@@ -150,6 +140,16 @@ fn push_header_comment(
         text: line.to_string(),
         line: i + 1,
     });
+}
+
+fn flush_attrs_as_comments(
+    items: &mut Vec<ImportBlockItem>,
+    pending_attrs: &mut Vec<String>,
+    line: usize,
+) {
+    for attr in pending_attrs.drain(..) {
+        items.push(ImportBlockItem::Comment { text: attr, line });
+    }
 }
 
 /// Consume a (possibly multi-line) use statement starting at `start`.

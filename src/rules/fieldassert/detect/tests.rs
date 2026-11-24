@@ -8,27 +8,6 @@ use crate::rules::{fieldassert::detect::*, Limits};
 // external crates
 use tempfile::NamedTempFile;
 
-fn write_temp_file(content: &str) -> NamedTempFile {
-    let mut f = NamedTempFile::new().unwrap();
-    f.write_all(content.as_bytes()).unwrap();
-    f.flush().unwrap();
-    f
-}
-
-fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Diagnostic> {
-    let ast = syn::parse_file(source).unwrap();
-    let limits = Limits {
-        field_assert: threshold,
-        ..Default::default()
-    };
-    check(&Input {
-        path,
-        source,
-        ast: &ast,
-        limits: &limits,
-    })
-}
-
 #[test]
 fn test_flags_four_field_asserts() {
     let src = r#"
@@ -168,6 +147,27 @@ fn test_example() {
     let violations = check_file(f.path(), src, 2);
     assert_eq!(violations.len(), 1);
     assert!(violations[0].message.starts_with("2 assert_eq!"));
+}
+
+fn write_temp_file(content: &str) -> NamedTempFile {
+    let mut f = NamedTempFile::new().unwrap();
+    f.write_all(content.as_bytes()).unwrap();
+    f.flush().unwrap();
+    f
+}
+
+fn check_file(path: &Path, source: &str, threshold: usize) -> Vec<Diagnostic> {
+    let ast = syn::parse_file(source).unwrap();
+    let limits = Limits {
+        field_assert: threshold,
+        ..Default::default()
+    };
+    check(&Input {
+        path,
+        source,
+        ast: &ast,
+        limits: &limits,
+    })
 }
 
 #[test]

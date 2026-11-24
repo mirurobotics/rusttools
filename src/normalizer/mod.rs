@@ -115,21 +115,6 @@ pub fn render_original(stmt: &UseStatement) -> String {
 mod tests {
     use super::*;
 
-    fn stmt(line: usize, text: &str, root_crate: &str) -> UseStatement {
-        UseStatement {
-            text: format!("{text}\n"),
-            line,
-            root_crate: root_crate.to_string(),
-            sort_key: text
-                .trim()
-                .trim_start_matches("use ")
-                .trim_start_matches("pub use ")
-                .trim_end_matches(';')
-                .to_string(),
-            attrs: Vec::new(),
-        }
-    }
-
     #[test]
     fn diagnostics_flag_super_and_split_imports() {
         let uses = [
@@ -234,6 +219,21 @@ mod tests {
 
         let diagnostics = diagnostics(Path::new("deployments.rs"), &refs);
         assert!(diagnostics.is_empty());
+    }
+
+    fn stmt(line: usize, text: &str, root_crate: &str) -> UseStatement {
+        UseStatement {
+            text: format!("{text}\n"),
+            line,
+            root_crate: root_crate.to_string(),
+            sort_key: text
+                .trim()
+                .trim_start_matches("use ")
+                .trim_start_matches("pub use ")
+                .trim_end_matches(';')
+                .to_string(),
+            attrs: Vec::new(),
+        }
     }
 
     #[test]

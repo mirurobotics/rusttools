@@ -4,20 +4,6 @@ use crate::classifier::Classifier;
 use crate::config::Config;
 use crate::parser::{parse, UseStatement};
 
-fn default_config() -> Config {
-    Config {
-        internal_crates: vec!["backend_api".to_string()],
-        ..Default::default()
-    }
-}
-
-fn check_content(content: &str) -> Vec<Diagnostic> {
-    let config = default_config();
-    let classifier = Classifier::new(&config);
-    let block = parse(content);
-    check(Path::new("test.rs"), &block, &classifier, &config)
-}
-
 #[test]
 fn correct_ordering_no_diagnostics() {
     let content = "\
@@ -131,6 +117,13 @@ fn no_imports_no_diagnostics() {
     assert!(diags.is_empty(), "expected no diagnostics, got: {diags:?}");
 }
 
+fn check_content(content: &str) -> Vec<Diagnostic> {
+    let config = default_config();
+    let classifier = Classifier::new(&config);
+    let block = parse(content);
+    check(Path::new("test.rs"), &block, &classifier, &config)
+}
+
 #[test]
 fn relative_super_import_is_reported() {
     let content = "\
@@ -182,6 +175,13 @@ fn main() {}
             .any(|diagnostic| diagnostic.kind == "split-internal-imports"),
         "expected split-internal-imports diagnostic, got: {diags:?}"
     );
+}
+
+fn default_config() -> Config {
+    Config {
+        internal_crates: vec!["backend_api".to_string()],
+        ..Default::default()
+    }
 }
 
 #[test]

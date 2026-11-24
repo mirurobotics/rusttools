@@ -119,23 +119,6 @@ mod tests {
     // external crates
     use tempfile::tempdir;
 
-    fn diagnostic_at(input: &Input, line: usize) -> Vec<Diagnostic> {
-        vec![Diagnostic {
-            file: input.path.to_path_buf(),
-            line,
-            kind: "test",
-            message: String::new(),
-        }]
-    }
-
-    fn late(input: &Input) -> Vec<Diagnostic> {
-        diagnostic_at(input, 9)
-    }
-
-    fn early(input: &Input) -> Vec<Diagnostic> {
-        diagnostic_at(input, 2)
-    }
-
     #[test]
     fn check_files_sorts_by_file_then_line() {
         let dir = tempdir().unwrap();
@@ -149,5 +132,22 @@ mod tests {
 
         let order: Vec<_> = diagnostics.into_iter().map(|d| (d.file, d.line)).collect();
         assert_eq!(order, vec![(a.clone(), 2), (a, 9), (b.clone(), 2), (b, 9)]);
+    }
+
+    fn late(input: &Input) -> Vec<Diagnostic> {
+        diagnostic_at(input, 9)
+    }
+
+    fn early(input: &Input) -> Vec<Diagnostic> {
+        diagnostic_at(input, 2)
+    }
+
+    fn diagnostic_at(input: &Input, line: usize) -> Vec<Diagnostic> {
+        vec![Diagnostic {
+            file: input.path.to_path_buf(),
+            line,
+            kind: "test",
+            message: String::new(),
+        }]
     }
 }

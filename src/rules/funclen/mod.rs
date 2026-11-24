@@ -37,27 +37,6 @@ struct FnVisitor<'a> {
     diagnostics: Vec<Diagnostic>,
 }
 
-impl FnVisitor<'_> {
-    fn check_block(&mut self, block: &syn::Block, anchor: usize, name: Option<String>) {
-        if is_allowed_on_line_or_previous(&self.lines, anchor, NAME) {
-            return;
-        }
-        let count = count_body_lines(&self.lines, block);
-        if count > self.max_lines {
-            let target = match name {
-                Some(name) => format!("function `{name}`"),
-                None => "closure".to_string(),
-            };
-            self.diagnostics.push(Diagnostic {
-                file: self.path.to_path_buf(),
-                line: anchor,
-                kind: NAME,
-                message: format!("{target} is {count} lines (limit {})", self.max_lines),
-            });
-        }
-    }
-}
-
 impl<'ast> Visit<'ast> for FnVisitor<'_> {
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
         let line = node.sig.fn_token.span.start().line;
@@ -85,6 +64,27 @@ impl<'ast> Visit<'ast> for FnVisitor<'_> {
             self.check_block(&body.block, line, None);
         }
         syn::visit::visit_expr_closure(self, node);
+    }
+}
+
+impl FnVisitor<'_> {
+    fn check_block(&mut self, block: &syn::Block, anchor: usize, name: Option<String>) {
+        if is_allowed_on_line_or_previous(&self.lines, anchor, NAME) {
+            return;
+        }
+        let count = count_body_lines(&self.lines, block);
+        if count > self.max_lines {
+            let target = match name {
+                Some(name) => format!("function `{name}`"),
+                None => "closure".to_string(),
+            };
+            self.diagnostics.push(Diagnostic {
+                file: self.path.to_path_buf(),
+                line: anchor,
+                kind: NAME,
+                message: format!("{target} is {count} lines (limit {})", self.max_lines),
+            });
+        }
     }
 }
 
@@ -165,17 +165,17 @@ impl<'ast> Visit<'ast> for LiteralFinder {
     }
 }
 
-fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
-    let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
-    syn::parse2(TokenTree::Group(group).into()).ok()
-}
-
 fn is_composite_literal(expr: &syn::Expr) -> bool {
     match expr {
         syn::Expr::Struct(_) | syn::Expr::Array(_) | syn::Expr::Repeat(_) => true,
         syn::Expr::Macro(node) => node.mac.path.is_ident("vec") && macro_args(&node.mac).is_some(),
         _ => false,
     }
+}
+
+fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
+    let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
+    syn::parse2(TokenTree::Group(group).into()).ok()
 }
 
 #[cfg(test)]
