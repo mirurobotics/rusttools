@@ -117,13 +117,6 @@ fn no_imports_no_diagnostics() {
     assert!(diags.is_empty(), "expected no diagnostics, got: {diags:?}");
 }
 
-fn check_content(content: &str) -> Vec<Diagnostic> {
-    let config = default_config();
-    let classifier = Classifier::new(&config);
-    let block = parse(content);
-    check(Path::new("test.rs"), &block, &classifier, &config)
-}
-
 #[test]
 fn relative_super_import_is_reported() {
     let content = "\
@@ -177,13 +170,6 @@ fn main() {}
     );
 }
 
-fn default_config() -> Config {
-    Config {
-        internal_crates: vec!["backend_api".to_string()],
-        ..Default::default()
-    }
-}
-
 #[test]
 fn find_header_missing_when_use_line_not_in_block() {
     let block = parse("use crate::app::state::AppState;\n\nfn main() {}\n");
@@ -225,4 +211,18 @@ fn group_headers_recognized_for_all_labels() {
     assert!(is_group_header("// external crates"));
     assert!(is_group_header("// std imports"));
     assert!(!is_group_header("// ======== SECTION ======== //"));
+}
+
+fn check_content(content: &str) -> Vec<Diagnostic> {
+    let config = default_config();
+    let classifier = Classifier::new(&config);
+    let block = parse(content);
+    check(Path::new("test.rs"), &block, &classifier, &config)
+}
+
+fn default_config() -> Config {
+    Config {
+        internal_crates: vec!["backend_api".to_string()],
+        ..Default::default()
+    }
 }

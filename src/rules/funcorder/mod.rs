@@ -2,7 +2,7 @@
 use std::collections::{HashMap, HashSet};
 
 // internal crates
-use crate::rules::{funclen::macro_args, is_allowed_on_line_or_previous, Diagnostic, Input};
+use crate::rules::{is_allowed_on_line_or_previous, macro_args, Diagnostic, Input};
 
 // external crates
 use syn::visit::Visit;

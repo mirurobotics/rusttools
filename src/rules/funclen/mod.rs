@@ -3,10 +3,9 @@ use std::collections::HashSet;
 use std::path::Path;
 
 // internal crates
-use crate::rules::{is_allowed_on_line_or_previous, is_code_line, Diagnostic, Input};
+use crate::rules::{is_allowed_on_line_or_previous, is_code_line, macro_args, Diagnostic, Input};
 
 // external crates
-use proc_macro2::{Delimiter, Group, TokenTree};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
 
@@ -171,11 +170,6 @@ fn is_composite_literal(expr: &syn::Expr) -> bool {
         syn::Expr::Macro(node) => node.mac.path.is_ident("vec") && macro_args(&node.mac).is_some(),
         _ => false,
     }
-}
-
-pub fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
-    let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
-    syn::parse2(TokenTree::Group(group).into()).ok()
 }
 
 #[cfg(test)]

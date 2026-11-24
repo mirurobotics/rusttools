@@ -149,32 +149,6 @@ fn run_funclen_check_clean_under_limit() {
     assert!(stdout.is_empty());
 }
 
-fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
-    let mut cli = Cli::parse_from(["lint-imports"]);
-    cli.path = Some(path);
-    cli.fix = fix;
-    cli.limits.funclen = funclen_threshold;
-    cli
-}
-
-fn write_over_limit_fn(dir: &Path) {
-    fs::write(
-        dir.join("long.rs"),
-        "\
-// standard crates
-use std::sync::Arc;
-
-fn long() {
-    let _ = Arc::new(1);
-    let _ = Arc::new(2);
-    let _ = Arc::new(3);
-    let _ = Arc::new(4);
-}
-",
-    )
-    .unwrap();
-}
-
 #[test]
 fn run_filelen_check_reports_file_over_default_limit() {
     let dir = tempdir().unwrap();
@@ -349,6 +323,32 @@ fn test_example() {
     assert_eq!(req.url, "http://mock/deployments");
 }
 "#,
+    )
+    .unwrap();
+}
+
+fn funclen_cli(path: PathBuf, fix: bool, funclen_threshold: usize) -> Cli {
+    let mut cli = Cli::parse_from(["lint-imports"]);
+    cli.path = Some(path);
+    cli.fix = fix;
+    cli.limits.funclen = funclen_threshold;
+    cli
+}
+
+fn write_over_limit_fn(dir: &Path) {
+    fs::write(
+        dir.join("long.rs"),
+        "\
+// standard crates
+use std::sync::Arc;
+
+fn long() {
+    let _ = Arc::new(1);
+    let _ = Arc::new(2);
+    let _ = Arc::new(3);
+    let _ = Arc::new(4);
+}
+",
     )
     .unwrap();
 }

@@ -146,19 +146,6 @@ fn main() {}
     );
 }
 
-fn fix(content: &str) -> String {
-    let config = default_config();
-    let classifier = Classifier::new(&config);
-    let block = parse(content);
-    fix_file(
-        Path::new("daemon/src/test.rs"),
-        content,
-        &block,
-        &classifier,
-        &config,
-    )
-}
-
 #[test]
 fn rewrites_super_imports_to_absolute_crate_paths() {
     let content = "\
@@ -207,6 +194,19 @@ fn main() {}
     assert!(result.starts_with("mod context;\nmod render;\n\n// standard crates\n"));
     assert!(result.contains("// external crates\nuse tokio::sync::broadcast;\n"));
     assert!(result.contains("fn main() {}"));
+}
+
+fn fix(content: &str) -> String {
+    let config = default_config();
+    let classifier = Classifier::new(&config);
+    let block = parse(content);
+    fix_file(
+        Path::new("daemon/src/test.rs"),
+        content,
+        &block,
+        &classifier,
+        &config,
+    )
 }
 
 fn default_config() -> Config {

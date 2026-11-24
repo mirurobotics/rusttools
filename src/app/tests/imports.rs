@@ -174,35 +174,6 @@ fn main() {}
     assert!(fixed.contains("use crate::storage::{errors::StorageErr, layout::Layout};"));
 }
 
-fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> String {
-    let dir = tempdir().unwrap();
-    let config_path = dir.path().join(".lint-imports.toml");
-    let nested_dir = dir.path().join(nested);
-    let file_path = nested_dir.join(file_name);
-    fs::create_dir_all(&nested_dir).unwrap();
-    fs::write(&config_path, "internal_crates = []\n").unwrap();
-    fs::write(&file_path, source).unwrap();
-
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    let exit_code = run_from_dir(
-        &nested_dir,
-        &cli(PathBuf::from("."), true, Some(config_path)),
-        &mut stdout,
-        &mut stderr,
-    );
-    let stdout = String::from_utf8(stdout).unwrap();
-
-    assert_eq!(exit_code, 0);
-    assert!(stdout.contains("fixed:"));
-    assert!(
-        stderr.is_empty(),
-        "unexpected stderr: {:?}",
-        String::from_utf8_lossy(&stderr)
-    );
-    fs::read_to_string(&file_path).unwrap()
-}
-
 #[test]
 fn run_check_mode_ignores_reexport_shell_mod_rs() {
     let dir = tempdir().unwrap();
@@ -301,6 +272,35 @@ use std::fmt::Debug;
 
     assert_eq!(exit_code, 0);
     assert!(stderr.contains("warning: could not read"));
+}
+
+fn fix_nested_file(nested: &str, file_name: &str, source: &str) -> String {
+    let dir = tempdir().unwrap();
+    let config_path = dir.path().join(".lint-imports.toml");
+    let nested_dir = dir.path().join(nested);
+    let file_path = nested_dir.join(file_name);
+    fs::create_dir_all(&nested_dir).unwrap();
+    fs::write(&config_path, "internal_crates = []\n").unwrap();
+    fs::write(&file_path, source).unwrap();
+
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let exit_code = run_from_dir(
+        &nested_dir,
+        &cli(PathBuf::from("."), true, Some(config_path)),
+        &mut stdout,
+        &mut stderr,
+    );
+    let stdout = String::from_utf8(stdout).unwrap();
+
+    assert_eq!(exit_code, 0);
+    assert!(stdout.contains("fixed:"));
+    assert!(
+        stderr.is_empty(),
+        "unexpected stderr: {:?}",
+        String::from_utf8_lossy(&stderr)
+    );
+    fs::read_to_string(&file_path).unwrap()
 }
 
 fn cli(path: PathBuf, fix: bool, config: Option<PathBuf>) -> Cli {

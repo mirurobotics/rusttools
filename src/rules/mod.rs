@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 // external crates
 use clap::Args;
+use proc_macro2::{Delimiter, Group, TokenTree};
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
 const DEFAULT_FUNCLEN: usize = 30;
@@ -100,6 +101,11 @@ pub fn has_allow_marker(line: &str, rule: &str) -> bool {
 pub fn is_code_line(line: &str) -> bool {
     let trimmed = line.trim();
     !trimmed.is_empty() && !trimmed.starts_with("//")
+}
+
+pub fn macro_args(mac: &syn::Macro) -> Option<syn::Expr> {
+    let group = Group::new(Delimiter::Bracket, mac.tokens.clone());
+    syn::parse2(TokenTree::Group(group).into()).ok()
 }
 
 pub type Rule = fn(&Input) -> Vec<Diagnostic>;
