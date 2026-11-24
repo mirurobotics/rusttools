@@ -107,19 +107,23 @@ pub(crate) fn collect_groups<'a>(
 
         for entry in entries {
             let group = groups.entry(entry.anchor.clone()).or_default();
-            if group.first_line == 0 {
-                group.first_line = entry.line;
-            } else {
-                group.first_line = group.first_line.min(entry.line);
-            }
-            group.lines.insert(entry.line);
-            group.needs_rewrite |= entry.needs_rewrite;
-            group.originals.push(resolution.statement);
-            group.tree.merge(entry.tree.clone());
+            add_entry(group, entry, resolution.statement);
         }
     }
 
     groups
+}
+
+fn add_entry<'a>(group: &mut AnchorGroup<'a>, entry: &ResolvedEntry, stmt: &'a UseStatement) {
+    if group.first_line == 0 {
+        group.first_line = entry.line;
+    } else {
+        group.first_line = group.first_line.min(entry.line);
+    }
+    group.lines.insert(entry.line);
+    group.needs_rewrite |= entry.needs_rewrite;
+    group.originals.push(stmt);
+    group.tree.merge(entry.tree.clone());
 }
 
 pub(crate) fn resolve_entries(file: &Path, stmt: &UseStatement) -> Option<Vec<ResolvedEntry>> {
