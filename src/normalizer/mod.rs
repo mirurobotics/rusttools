@@ -221,21 +221,6 @@ mod tests {
         assert!(diagnostics.is_empty());
     }
 
-    fn stmt(line: usize, text: &str, root_crate: &str) -> UseStatement {
-        UseStatement {
-            text: format!("{text}\n"),
-            line,
-            root_crate: root_crate.to_string(),
-            sort_key: text
-                .trim()
-                .trim_start_matches("use ")
-                .trim_start_matches("pub use ")
-                .trim_end_matches(';')
-                .to_string(),
-            attrs: Vec::new(),
-        }
-    }
-
     #[test]
     fn diagnostics_skip_attributed_super_imports() {
         let uses = [UseStatement {
@@ -290,5 +275,20 @@ mod tests {
             normalized[0].text,
             "#[cfg(feature = \"test\")]\nuse crate::filesys::PathExt;\n"
         );
+    }
+
+    fn stmt(line: usize, text: &str, root_crate: &str) -> UseStatement {
+        UseStatement {
+            text: format!("{text}\n"),
+            line,
+            root_crate: root_crate.to_string(),
+            sort_key: text
+                .trim()
+                .trim_start_matches("use ")
+                .trim_start_matches("pub use ")
+                .trim_end_matches(';')
+                .to_string(),
+            attrs: Vec::new(),
+        }
     }
 }
