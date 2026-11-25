@@ -1,31 +1,5 @@
 // internal crates
-use crate::rules::{funclen::*, Limits};
-
-fn body(n: usize) -> String {
-    "    let x = 1;\n".repeat(n)
-}
-
-fn src_fn(n: usize) -> String {
-    format!("fn sample() {{\n{}}}\n", body(n))
-}
-
-fn check(source: &str, max_lines: usize) -> Vec<Diagnostic> {
-    check_file(Path::new("src/lib.rs"), source, max_lines)
-}
-
-fn check_file(path: &Path, source: &str, max_lines: usize) -> Vec<Diagnostic> {
-    let ast = syn::parse_file(source).unwrap();
-    let limits = Limits {
-        funclen: max_lines,
-        ..Default::default()
-    };
-    super::check(&Input {
-        path,
-        source,
-        ast: &ast,
-        limits: &limits,
-    })
-}
+use crate::rules::funclen::tests::*;
 
 #[test]
 fn under_limit_no_violation() {
@@ -76,6 +50,14 @@ fn closure_over_limit_reported_without_name() {
 }
 
 #[test]
+fn expression_closure_not_checked() {
+    let src = "fn outer() {\n    let f = |x| x\n        + 1\n        + 2;\n}\n";
+    let violations = check(src, 2);
+    assert_eq!(violations.len(), 1);
+    assert!(violations[0].message.starts_with("function `outer`"));
+}
+
+#[test]
 fn impl_method_over_limit_reported() {
     let src = format!(
         "struct S;\nimpl S {{\n    fn method(&self) {{\n{}    }}\n}}\n",
@@ -98,34 +80,18 @@ fn trait_default_method_reported_and_bodyless_ignored() {
 }
 
 #[test]
-fn test_fn_exempt() {
-    let src = format!("#[test]\nfn sample() {{\n{}}}\n", body(10));
-    assert!(check(&src, 3).is_empty());
+fn test_fn_counted() {
+    let src = format!("#[test]\nfn sample() {{\n{}}}\n", body(4));
+    assert_eq!(check(&src, 3).len(), 1);
 }
 
 #[test]
-fn tokio_test_fn_exempt() {
-    let src = format!("#[tokio::test]\nasync fn sample() {{\n{}}}\n", body(10));
-    assert!(check(&src, 3).is_empty());
-}
-
-#[test]
-fn cfg_test_mod_exempt() {
+fn cfg_test_mod_counted() {
     let src = format!(
         "#[cfg(test)]\nmod tests {{\n    fn helper() {{\n{}    }}\n}}\n",
-        body(10)
+        body(4)
     );
-    assert!(check(&src, 3).is_empty());
-}
-
-#[test]
-fn cfg_test_impl_and_trait_exempt() {
-    let src = format!(
-        "#[cfg(test)]\nimpl S {{\n    fn helper() {{\n{0}    }}\n}}\n\
-         #[cfg(test)]\ntrait T {{\n    fn helper() {{\n{0}    }}\n}}\n",
-        body(10)
-    );
-    assert!(check(&src, 3).is_empty());
+    assert_eq!(check(&src, 3).len(), 1);
 }
 
 #[test]
@@ -137,29 +103,14 @@ fn doc_commented_fn_over_limit_reported() {
 }
 
 #[test]
-fn cfg_feature_test_fn_exempt() {
-    let src = format!(
-        "#[cfg(feature = \"test\")]\nfn sample() {{\n{}}}\n",
-        body(10)
-    );
-    assert!(check(&src, 3).is_empty());
+fn tests_dir_file_counted() {
+    let violations = check_file(Path::new("daemon/tests/foo.rs"), &src_fn(4), 3);
+    assert_eq!(violations.len(), 1);
 }
 
 #[test]
-fn tests_path_exempt() {
-    let violations = check_file(Path::new("daemon/tests/foo.rs"), &src_fn(10), 3);
-    assert!(violations.is_empty());
-}
-
-#[test]
-fn tests_rs_file_exempt() {
-    let violations = check_file(Path::new("src/checker/tests.rs"), &src_fn(10), 3);
-    assert!(violations.is_empty());
-}
-
-#[test]
-fn file_ending_in_tests_rs_not_exempt() {
-    let violations = check_file(Path::new("src/contests.rs"), &src_fn(10), 3);
+fn tests_rs_file_counted() {
+    let violations = check_file(Path::new("src/checker/tests.rs"), &src_fn(4), 3);
     assert_eq!(violations.len(), 1);
 }
 

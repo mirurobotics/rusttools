@@ -1,6 +1,8 @@
 mod fieldassert;
 mod filelen;
 mod funclen;
+mod nestdepth;
+mod todoissue;
 
 // standard crates
 use std::path::{Path, PathBuf};
@@ -9,8 +11,9 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 
 const DEFAULT_FIELD_ASSERT: usize = 4;
-const DEFAULT_FUNCLEN: usize = 50;
+const DEFAULT_FUNCLEN: usize = 30;
 const DEFAULT_FILELEN: usize = 300;
+const DEFAULT_NESTDEPTH: usize = 2;
 
 pub const ALLOW_MARKER: &str = "lint:allow(";
 
@@ -24,7 +27,7 @@ pub struct Limits {
     )]
     pub field_assert: usize,
 
-    /// Max non-blank, non-comment body lines per function (0 disables)
+    /// Max non-blank, non-comment body lines per function, tests included (0 disables)
     #[arg(
         long = "funclen-threshold",
         value_name = "FUNCLEN_THRESHOLD",
@@ -39,6 +42,14 @@ pub struct Limits {
         help = "Max non-blank, non-comment lines per file (0 disables)"
     )]
     pub filelen: usize,
+
+    #[arg(
+        long = "nestdepth-threshold",
+        value_name = "NESTDEPTH_THRESHOLD",
+        default_value_t = DEFAULT_NESTDEPTH,
+        help = "Max nested control-flow blocks in a function or closure body (0 disables)"
+    )]
+    pub nestdepth: usize,
 }
 
 impl Default for Limits {
@@ -47,13 +58,19 @@ impl Default for Limits {
             field_assert: DEFAULT_FIELD_ASSERT,
             funclen: DEFAULT_FUNCLEN,
             filelen: DEFAULT_FILELEN,
+            nestdepth: DEFAULT_NESTDEPTH,
         }
     }
 }
 
 pub const ASSERT_PATH_RULES: &[Rule] = &[fieldassert::check];
 
-pub const PATH_RULES: &[Rule] = &[funclen::check, filelen::check];
+pub const PATH_RULES: &[Rule] = &[
+    funclen::check,
+    filelen::check,
+    nestdepth::check,
+    todoissue::check,
+];
 
 pub fn check_files(files: &[PathBuf], rules: &[Rule], limits: &Limits) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
