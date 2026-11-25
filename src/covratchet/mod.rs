@@ -9,11 +9,11 @@ pub fn run(modules: &[ModuleCoverage], stdout: &mut impl Write, stderr: &mut imp
     let mut updated = 0;
     for module in modules {
         let outcome = outcome_of(module);
-        if let Outcome::Raised { to, .. } = outcome {
-            if let Err(error) = write_threshold(&module.covgate_file, to) {
-                let _ = writeln!(stderr, "error: {error}");
-                return 1;
-            }
+        if let Err(error) = save_outcome(module, &outcome) {
+            let _ = writeln!(stderr, "error: {error}");
+            return 1;
+        }
+        if matches!(outcome, Outcome::Raised { .. }) {
             updated += 1;
         }
         write_outcome(stdout, &module.name, &outcome);
@@ -36,6 +36,13 @@ fn outcome_of(module: &ModuleCoverage) -> Outcome {
         };
     }
     Outcome::Kept { actual, minimum }
+}
+
+fn save_outcome(module: &ModuleCoverage, outcome: &Outcome) -> Result<(), String> {
+    let Outcome::Raised { to, .. } = outcome else {
+        return Ok(());
+    };
+    write_threshold(&module.covgate_file, *to)
 }
 
 fn write_outcome(stdout: &mut impl Write, name: &str, outcome: &Outcome) {
