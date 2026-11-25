@@ -39,7 +39,7 @@ jobs:
 
   test:
     # yamllint disable-line rule:line-length
-    uses: mirurobotics/workflows/.github/workflows/rust-test.yml@ddfe01eb62c79c5c85e95e534564bf1a05070049
+    uses: mirurobotics/workflows/.github/workflows/rust-test.yml@a22acba43d566359de2ea1182eea4ca1d1d49441
     with:
       runs-on: ubuntu-latest # standard GitHub-hosted runners are free in public repos
       rusttools-rev: ${{ github.sha }}
