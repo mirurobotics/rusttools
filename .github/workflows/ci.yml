@@ -38,26 +38,11 @@ jobs:
         run: LINT_FIX=0 ./scripts/lint.sh
 
   test:
-    timeout-minutes: 10
-    name: test
-    runs-on: ubuntu-latest # standard GitHub-hosted runners are free in public repos
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-        with:
-          components: llvm-tools-preview
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@21eb0b6228fa6252dafdd9c82e7516ad2328c775 # cargo-llvm-cov
-
-      - name: Run Tests
-        run: ./scripts/covgate.sh
+    # yamllint disable-line rule:line-length
+    uses: mirurobotics/workflows/.github/workflows/rust-test.yml@a22acba43d566359de2ea1182eea4ca1d1d49441
+    with:
+      runs-on: ubuntu-latest # standard GitHub-hosted runners are free in public repos
+      rusttools-rev: ${{ github.sha }}
 
   surface-lint:
     # yamllint disable-line rule:line-length

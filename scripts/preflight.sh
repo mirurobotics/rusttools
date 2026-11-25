@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 REPO_ROOT=$(git rev-parse --show-toplevel)
-
+cd "$REPO_ROOT"
 
 echo "Lint"
 echo "===="
@@ -9,4 +9,4 @@ echo "===="
 
 echo "Test"
 echo "===="
-"$REPO_ROOT/scripts/covgate.sh"
+cargo run --quiet -- covgate

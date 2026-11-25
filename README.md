@@ -32,6 +32,11 @@ To suppress a rule:
 - `todoissue`: put `// lint:allow(todoissue)` in the same run of comment lines as the `TODO` or `FIXME`, written in the same style (`//`, `///` or `//!`).
 - `field-by-field-assert`: put `// lint:allow(field-by-field-assert)` anywhere from the line with the test body's opening brace through the line with its closing brace.
 
+Two subcommands gate test coverage, run from the repo root with [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) installed. Each directory under `src` with a `.covgate` file is a module, and the file's first line is its minimum region coverage in percent (`0` skips it):
+
+- `lint-imports covgate` runs the tests once and fails if any module is below its minimum.
+- `lint-imports covratchet` raises each minimum to the module's current coverage, never lowering it.
+
 ## Rules covered by clippy and rustc
 
 Some gotools rules already exist in clippy or rustc, so rusttools doesn't reimplement them. rusttools enforces them on itself; copy the `[lints.rust]` and `[lints.clippy]` tables from its [`Cargo.toml`](Cargo.toml) and its [`clippy.toml`](clippy.toml) into each consuming repo. In a workspace, put them under `[workspace.lints.rust]` and `[workspace.lints.clippy]` in the root manifest and add `lints.workspace = true` to each member; cargo ignores a `[lints]` table in a virtual manifest.
