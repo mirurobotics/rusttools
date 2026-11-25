@@ -46,7 +46,7 @@ UNCHANGED=0
 # Discover modules: every directory under SRC_DIR that contains a .covgate file
 covgate_list=$(mktemp)
 trap 'rm -f "$covgate_list"' EXIT
-find "$SRC_DIR" -name '.covgate' -type f | sort > "$covgate_list"
+find "$SRC_DIR" -name '.covgate' -type f | sort >"$covgate_list"
 
 while read -r covgate_file; do
     module_path=$(dirname "$covgate_file")
@@ -81,14 +81,14 @@ while read -r covgate_file; do
     # Ratchet up only: update threshold when actual coverage is greater
     is_greater=$(awk -v a="$actual" -v c="$current" 'BEGIN {print (a > c)}')
     if [ "$is_greater" -eq 1 ]; then
-        printf '%s\n' "$actual" > "$covgate_file"
+        printf '%s\n' "$actual" >"$covgate_file"
         echo "⬆️  ${module_display}: ${current}% → ${actual}%"
         UPDATED=$((UPDATED + 1))
     else
         echo "─  ${module_display}: ${actual}% (threshold: ${current}%)"
         UNCHANGED=$((UNCHANGED + 1))
     fi
-done < "$covgate_list"
+done <"$covgate_list"
 
 echo ""
 echo "Done. Updated: $UPDATED, Unchanged: $UNCHANGED"
